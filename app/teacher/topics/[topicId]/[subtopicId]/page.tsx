@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import ReleaseToggle from '@/components/release-toggle'
+import AssignQuestionsButton from '@/components/assign-questions-button'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getSubtopic(subtopicId: string): Promise<any> {
@@ -79,15 +80,18 @@ export default async function TeacherSubtopicPage({
         >
           &larr; Back to {topic.title}
         </Link>
-        <div className="mt-2 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{subtopic.title}</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              J277/{topic.component} &middot; {topic.title}
-            </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{subtopic.title}</h1>
+              <p className="mt-1 text-sm text-gray-500">
+                J277/{topic.component} &middot; {topic.title}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <AssignQuestionsButton subtopicId={subtopic.id} />
+              <ReleaseToggle subtopicId={subtopic.id} initiallyReleased={released} />
+            </div>
           </div>
-          <ReleaseToggle subtopicId={subtopic.id} initiallyReleased={released} />
-        </div>
       </div>
 
       {content && content.learning_objectives ? (

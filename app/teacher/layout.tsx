@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import NavLink from '@/components/NavLink'
 import type { Database } from '@/lib/supabase/database.types'
 
 export default async function TeacherLayout({
@@ -34,19 +35,24 @@ export default async function TeacherLayout({
             <Link href="/teacher" className="text-xl font-bold text-gray-900">
               GCSE CS Tutor
             </Link>
-            <nav className="flex gap-6">
-              <Link href="/teacher" className="text-sm font-medium text-gray-600 hover:text-gray-900">
-                Dashboard
-              </Link>
-              <Link href="/teacher/topics" className="text-sm font-medium text-gray-600 hover:text-gray-900">
-                Topics
-              </Link>
+            <nav className="hidden sm:flex items-center gap-1">
+              <div className="px-3 py-2">
+                <NavLink href="/teacher" exact>Dashboard</NavLink>
+              </div>
+              <div className="px-3 py-2">
+                <NavLink href="/teacher/topics">Topics</NavLink>
+              </div>
+            </nav>
+            {/* Mobile nav */}
+            <nav className="flex sm:hidden items-center gap-3">
+              <Link href="/teacher" className="text-sm font-medium text-gray-600 hover:text-gray-900">D</Link>
+              <Link href="/teacher/topics" className="text-sm font-medium text-gray-600 hover:text-gray-900">T</Link>
             </nav>
           </div>
           <form action="/auth/signout" method="post">
             <button
               type="submit"
-              className="rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+              className="rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
             >
               Sign out
             </button>
