@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
 export default function LoginPage() {
-  const [identifier, setIdentifier] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -17,27 +17,6 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError(null)
-
-    // Detect if the identifier is an email or username
-    const isEmail = identifier.includes('@')
-
-    let email = identifier
-
-    if (!isEmail) {
-      // Look up the email from the profiles table by username
-      const { data: profile, error: lookupError } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('username', identifier)
-        .single()
-
-      if (lookupError || !profile) {
-        setError('No account found with that username.')
-        setLoading(false)
-        return
-      }
-      email = profile.email
-    }
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -70,17 +49,17 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label htmlFor="identifier" className="block text-sm font-medium text-gray-700">
-              Email or username
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Email address
             </label>
             <input
-              id="identifier"
-              type="text"
+              id="email"
+              type="email"
               required
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm text-gray-900"
-              placeholder="you@example.com or username"
+              placeholder="you@example.com"
             />
           </div>
 

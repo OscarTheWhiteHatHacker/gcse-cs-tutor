@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
 export default function SignupPage() {
-  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -20,34 +19,17 @@ export default function SignupPage() {
     setLoading(true)
     setError(null)
 
-    const signUpData: {
-      email?: string
-      password: string
-      options: {
-        data: Record<string, string>
-        emailRedirectTo?: string
-      }
-    } = {
+    const { error } = await supabase.auth.signUp({
+      email,
       password,
       options: {
         data: {
           full_name: fullName,
           role: role,
-          username: username,
         },
+        emailRedirectTo: `${location.origin}/auth/callback`,
       },
-    }
-
-    if (email) {
-      signUpData.email = email
-      signUpData.options.emailRedirectTo = `${location.origin}/auth/callback`
-    } else {
-      // Sign up without email — use a placeholder email for the auth system
-      // The user will verify their account via username instead
-      signUpData.email = `${username}@placeholder.local`
-    }
-
-    const { error } = await supabase.auth.signUp(signUpData)
+    })
 
     if (error) {
       setError(error.message)
@@ -63,11 +45,10 @@ export default function SignupPage() {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
         <div className="w-full max-w-md text-center">
-          <h1 className="text-3xl font-bold text-gray-900">Account created!</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Check your email</h1>
           <p className="mt-4 text-gray-600">
-            {email
-              ? `We've sent a confirmation link to ${email}. Please check your email to activate your account.`
-              : 'Your account has been created. You can sign in with your username.'}
+            We&apos;ve sent a confirmation link to <strong>{email}</strong>.
+            Please check your email and click the link to activate your account.
           </p>
           <Link
             href="/auth/login"
@@ -97,7 +78,7 @@ export default function SignupPage() {
 
           <div>
             <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
-              Full name <span className="text-red-500">*</span>
+              Full name
             </label>
             <input
               id="fullName"
@@ -111,27 +92,13 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-              Username <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="username"
-              type="text"
-              required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm text-gray-900"
-              placeholder="johndoe"
-            />
-          </div>
-
-          <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email address <span className="text-gray-400 font-normal">(optional)</span>
+              Email address
             </label>
             <input
               id="email"
               type="email"
+              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm text-gray-900"
@@ -141,7 +108,7 @@ export default function SignupPage() {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Password <span className="text-red-500">*</span>
+              Password
             </label>
             <input
               id="password"
@@ -157,7 +124,7 @@ export default function SignupPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              I am a... <span className="text-red-500">*</span>
+              I am a...
             </label>
             <div className="flex gap-4">
               <label className="flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 cursor-pointer hover:bg-gray-50 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50">
