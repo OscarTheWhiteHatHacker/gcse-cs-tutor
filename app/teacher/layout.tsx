@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import type { Database } from '@/lib/supabase/database.types'
 
 export default async function TeacherLayout({
   children,
@@ -20,7 +21,8 @@ export default async function TeacherLayout({
     .eq('id', user.id)
     .single()
 
-  if (!profile || profile.role !== 'teacher') {
+  const typedProfile = profile as Database['public']['Tables']['profiles']['Row'] | null
+  if (!typedProfile || typedProfile.role !== 'teacher') {
     redirect('/student')
   }
 

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import type { Database } from '@/lib/supabase/database.types'
 
 export default async function StudentDashboard() {
   const supabase = await createClient()
@@ -15,12 +16,14 @@ export default async function StudentDashboard() {
     .eq('id', user.id)
     .single()
 
+  const typedProfile = profile as Database['public']['Tables']['profiles']['Row'] | null
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Student Dashboard</h1>
         <p className="mt-1 text-gray-600">
-          Welcome back, {profile?.full_name || 'Student'}
+          Welcome back, {typedProfile?.full_name || 'Student'}
         </p>
       </div>
 

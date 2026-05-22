@@ -43,7 +43,12 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
       if (user) {
-        await fetchProfile(user.id)
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        setProfile(data)
       }
       setIsLoading(false)
     }
@@ -60,6 +65,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

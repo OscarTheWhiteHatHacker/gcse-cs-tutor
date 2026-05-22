@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import type { Database } from '@/lib/supabase/database.types'
 
 export default async function Home() {
   const supabase = await createClient()
@@ -15,9 +16,9 @@ export default async function Home() {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role === 'teacher') {
+  if ((profile as Database['public']['Tables']['profiles']['Row'] | null)?.role === 'teacher') {
     redirect('/teacher')
-  } else if (profile?.role === 'student') {
+  } else if ((profile as Database['public']['Tables']['profiles']['Row'] | null)?.role === 'student') {
     redirect('/student')
   }
 
