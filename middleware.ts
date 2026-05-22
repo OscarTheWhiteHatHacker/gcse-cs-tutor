@@ -5,19 +5,16 @@ export async function middleware(request: NextRequest) {
   const { supabase, supabaseResponse, user } = await updateSession(request)
   const { pathname } = request.nextUrl
 
+  // Read role from JWT user_metadata instead of querying DB
+  const role = user?.user_metadata?.role as string | undefined
+
   // Auth pages - redirect to dashboard if already logged in
   if (pathname.startsWith('/auth/login') || pathname.startsWith('/auth/signup')) {
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-
-      if (profile?.role === 'teacher') {
+    if (user && role) {
+      if (role === 'teacher') {
         return NextResponse.redirect(new URL('/teacher', request.url))
       }
-      if (profile?.role === 'student') {
+      if (role === 'student') {
         return NextResponse.redirect(new URL('/student', request.url))
       }
     }
@@ -31,24 +28,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Fetch profile for role check
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  // Teacher routes - role check
+  // Teacher routes - role check from JWT
   if (pathname.startsWith('/teacher')) {
-    if (!profile || profile.role !== 'teacher') {
+    if (role !== 'teacher') {
       return NextResponse.redirect(new URL('/student', request.url))
     }
     return supabaseResponse
   }
 
-  // Student routes - role check
+  // Student routes - role check from JWT
   if (pathname.startsWith('/student')) {
-    if (!profile || profile.role !== 'student') {
+    if (role !== 'student') {
       return NextResponse.redirect(new URL('/teacher', request.url))
     }
     return supabaseResponse
