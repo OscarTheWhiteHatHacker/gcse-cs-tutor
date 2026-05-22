@@ -27,5 +27,5 @@ async function handleSignout(request: NextRequest) {
 
   await supabase.auth.signOut()
 
-  return NextResponse.redirect(new URL('/auth/login', request.url))
+  return NextResponse.redirect(new URL('/auth/login', request.url), { status: 303 })
 }
