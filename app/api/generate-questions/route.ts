@@ -13,7 +13,7 @@ async function generateViaOpenRouter(subtopicTitle: string): Promise<string> {
       'X-Title': 'GCSE CS Tutor',
     },
     body: JSON.stringify({
-      model: 'mistralai/mistral-7b-instruct:free',
+      model: 'google/gemma-4-26b-a4b-it:free',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
       max_tokens: 2500,

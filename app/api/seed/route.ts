@@ -42,7 +42,7 @@ async function generateContent(subtopicTitle: string): Promise<Record<string, un
         'X-Title': 'GCSE CS Tutor',
       },
       body: JSON.stringify({
-        model: 'mistralai/mistral-7b-instruct:free',
+        model: 'google/gemma-4-26b-a4b-it:free',
         messages: [
           { role: 'user', content: prompt },
         ],

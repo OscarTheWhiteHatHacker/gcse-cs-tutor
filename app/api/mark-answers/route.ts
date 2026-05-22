@@ -31,7 +31,7 @@ async function markSingleAnswer(
       'X-Title': 'GCSE CS Tutor',
     },
     body: JSON.stringify({
-      model: 'mistralai/mistral-7b-instruct:free',
+      model: 'google/gemma-4-26b-a4b-it:free',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.3,
       max_tokens: 500,
