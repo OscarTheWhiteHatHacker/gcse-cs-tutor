@@ -22,16 +22,14 @@ async function markSingleAnswer(
 ): Promise<{ score: number; feedback: string; suggestions: string }> {
   const prompt = `You are an OCR GCSE Computer Science examiner. Mark this student answer. Question: ${question}. Mark scheme: ${markScheme}. Student answer: ${studentAnswer}. Marks available: ${marks}. Return JSON: {"score": number, "feedback": string, "suggestions": string}. Only return the JSON object.`
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'HTTP-Referer': 'https://gcse-cs-tutor.vercel.app',
-      'X-Title': 'GCSE CS Tutor',
+      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'google/gemma-4-26b-a4b-it:free',
+      model: 'mixtral-8x7b-32768',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.3,
       max_tokens: 500,

@@ -4,16 +4,14 @@ import { createClient } from '@/lib/supabase/server'
 async function generateViaOpenRouter(subtopicTitle: string): Promise<string> {
   const prompt = `You are an expert OCR GCSE Computer Science examiner. Generate 5 exam-style questions for the subtopic: ${subtopicTitle}. Each question should have: question text, marks available (1-5), and a detailed mark scheme. Return the response as a JSON array where each item has: {question: string, marks: number, mark_scheme: string}. Only return the JSON array, no other text.`
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'HTTP-Referer': 'https://gcse-cs-tutor.vercel.app',
-      'X-Title': 'GCSE CS Tutor',
+      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'google/gemma-4-26b-a4b-it:free',
+      model: 'mixtral-8x7b-32768',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
       max_tokens: 2500,
