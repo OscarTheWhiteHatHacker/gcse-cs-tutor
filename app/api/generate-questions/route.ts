@@ -1,13 +1,25 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-async function generateViaAI(subtopicTitle: string, lessonContent: string): Promise<string> {
-  const prompt = `You are an expert OCR GCSE Computer Science examiner. Generate 5 exam-style questions specifically based on the following lesson content for "${subtopicTitle}".
+async function generateViaAI(subtopicTitle: string, lessonContent: string, existingQuestions: string = ''): Promise<string> {
+  let prompt = `You are an expert OCR GCSE Computer Science examiner. Generate 5 exam-style questions specifically based on the following lesson content for "${subtopicTitle}".
 
 LESSON CONTENT:
 ${lessonContent}
 
 Each question should: test understanding of the material above, have marks (1-5), and include a detailed mark scheme based on the lesson content. Return ONLY a JSON array where each item has: {question: string, marks: number, mark_scheme: string}. Only return the JSON array, no other text.`
+
+  if (existingQuestions) {
+    prompt = `You are an expert OCR GCSE Computer Science examiner. Generate 5 NEW exam-style questions based on the following lesson content for "${subtopicTitle}". The questions MUST be different from any previously generated for this topic.
+
+LESSON CONTENT:
+${lessonContent}
+
+PREVIOUS QUESTIONS (DO NOT REPEAT THESE):
+${existingQuestions}
+
+Each new question should: test understanding of the material above, be different from the previous questions, have marks (1-5), and include a detailed mark scheme. Return ONLY a JSON array where each item has: {question: string, marks: number, mark_scheme: string}. Only return the JSON array, no other text.`
+  }
 
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -144,10 +156,33 @@ export async function POST(request: Request) {
     lessonContent = parts.join('\n\n')
   }
 
+  // Fetch existing question sets for this subtopic to avoid repeating questions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existingSets } = await (supabase.from('question_sets') as any)
+    .select('questions_json')
+    .eq('subtopic_id', subtopicId)
+    .order('created_at', { ascending: false })
+    .limit(5)
+
+  let existingQuestions = ''
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (existingSets && (existingSets as any[]).length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const prevQuestions = (existingSets as any[]).flatMap((set: any) => {
+      const qs = set.questions_json
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return Array.isArray(qs) ? qs.map((q: any) => q.question || '') : []
+    })
+    if (prevQuestions.length > 0) {
+      existingQuestions = prevQuestions.map((q: string, i: number) => `${i + 1}. ${q}`).join('\n')
+    }
+  }
+
   // Call Groq
   let rawText: string
   try {
-    rawText = await generateViaAI(subtopicTitle, lessonContent)
+    rawText = await generateViaAI(subtopicTitle, lessonContent, existingQuestions)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error generating questions'
     return NextResponse.json({
