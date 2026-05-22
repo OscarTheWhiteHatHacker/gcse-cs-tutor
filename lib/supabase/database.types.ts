@@ -15,6 +15,7 @@ export type Database = {
           email: string
           role: 'teacher' | 'student'
           full_name: string
+          username: string | null
           class_id: string | null
         }
         Insert: {
@@ -22,6 +23,7 @@ export type Database = {
           email: string
           role: 'teacher' | 'student'
           full_name: string
+          username?: string | null
           class_id?: string | null
         }
         Update: {
@@ -29,6 +31,7 @@ export type Database = {
           email?: string
           role?: 'teacher' | 'student'
           full_name?: string
+          username?: string | null
           class_id?: string | null
         }
       }
