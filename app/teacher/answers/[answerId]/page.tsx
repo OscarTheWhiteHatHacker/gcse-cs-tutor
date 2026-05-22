@@ -76,10 +76,10 @@ export default async function TeacherAnswerReviewPage({
     redirect('/auth/login')
   }
 
-  // Check teacher role
+  // Check teacher role and get org
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profileList } = await (supabase.from('profiles') as any)
-    .select('role')
+    .select('role, organization_id')
     .eq('id', user.id)
     .limit(1)
 
@@ -88,6 +88,8 @@ export default async function TeacherAnswerReviewPage({
   if (!profile || profile.role !== 'teacher') {
     redirect('/student')
   }
+
+  const teacherOrgId = profile.organization_id
 
   // Fetch the student answer
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -115,6 +117,31 @@ export default async function TeacherAnswerReviewPage({
           <p className="mt-2 text-sm text-gray-500">
             The answer you are looking for does not exist or has been removed.
           </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Verify the student is in the same org as the teacher
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: studentProfileList } = await (supabase.from('profiles') as any)
+    .select('id, organization_id')
+    .eq('id', answer.student_id)
+    .limit(1)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const studentProfile = (studentProfileList as any[] | null)?.[0]
+  if (!studentProfile || studentProfile.organization_id !== teacherOrgId) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <Link href="/teacher" className="text-sm font-medium text-blue-600 hover:text-blue-800">
+            &larr; Back to Dashboard
+          </Link>
+        </div>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-6">
+          <h2 className="text-lg font-semibold text-red-800">Access Denied</h2>
+          <p className="mt-2 text-sm text-red-700">This student is not in your school. You cannot view this answer.</p>
         </div>
       </div>
     )

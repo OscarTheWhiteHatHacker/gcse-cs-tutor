@@ -18,7 +18,7 @@ export default async function StudentLayout({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, organization_id')
     .eq('id', user.id)
     .single()
 
@@ -26,6 +26,17 @@ export default async function StudentLayout({
   if (!typedProfile || typedProfile.role !== 'student') {
     redirect('/teacher')
   }
+
+  // Fetch organization name
+  let orgName = ''
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: orgData } = await (supabase.from('organizations') as any)
+    .select('name')
+    .eq('id', typedProfile.organization_id)
+    .limit(1)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  orgName = ((orgData as any[] | null)?.[0] as any)?.name || ''
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -35,6 +46,11 @@ export default async function StudentLayout({
             <Link href="/student" className="text-xl font-bold text-gray-900">
               GCSE CS Tutor
             </Link>
+            {orgName && (
+              <span className="hidden sm:inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
+                {orgName}
+              </span>
+            )}
             <nav className="hidden sm:flex items-center gap-1">
               <div className="px-3 py-2">
                 <NavLink href="/student" exact>Dashboard</NavLink>

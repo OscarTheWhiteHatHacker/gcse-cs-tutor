@@ -50,10 +50,10 @@ export default async function TeacherDashboard() {
     redirect('/auth/login')
   }
 
-  // Check teacher role
+  // Check teacher role and get org
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profileList } = await (supabase.from('profiles') as any)
-    .select('*')
+    .select('*, organizations!inner(name)')
     .eq('id', user.id)
     .limit(1)
 
@@ -63,17 +63,31 @@ export default async function TeacherDashboard() {
     redirect('/student')
   }
 
-  // Fetch all students
+  const organizationId = typedProfile.organization_id
+  const orgName = typedProfile.organizations?.name || ''
+
+  // Fetch all students in the same organization
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: students } = await (supabase.from('profiles') as any)
     .select('id, full_name, email')
     .eq('role', 'student')
+    .eq('organization_id', organizationId)
     .order('full_name', { ascending: true })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const studentList = (students || []) as StudentData[]
 
-  // Fetch all question sets with subtopic info
+  // Get all teacher IDs in the same organization (to scope question sets)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: orgTeachers } = await (supabase.from('profiles') as any)
+    .select('id')
+    .eq('role', 'teacher')
+    .eq('organization_id', organizationId)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const teacherIdsInOrg = ((orgTeachers as any[] | null) || []).map((t: any) => t.id)
+
+  // Fetch all question sets created by teachers in this org, with subtopic info
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: allSets } = await (supabase.from('question_sets') as any)
     .select(`
@@ -85,6 +99,7 @@ export default async function TeacherDashboard() {
         )
       )
     `)
+    .in('teacher_id', teacherIdsInOrg)
     .order('created_at', { ascending: false })
 
   // Build question set list with subtopic titles
@@ -99,10 +114,14 @@ export default async function TeacherDashboard() {
     subtopic_topic_title: set.subtopics?.topics?.title || 'Unknown Topic',
   }))
 
-  // Fetch all student answers
+  // Get all student IDs in this org
+  const studentIdsInOrg = studentList.map((s) => s.id)
+
+  // Fetch all student answers from students in this org
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: allAnswers } = await (supabase.from('student_answers') as any)
     .select('id, question_set_id, student_id, total_score, submitted_at')
+    .in('student_id', studentIdsInOrg)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const answerList = (allAnswers || []) as StudentAnswerData[]
@@ -129,6 +148,11 @@ export default async function TeacherDashboard() {
         <p className="mt-1 text-gray-600">
           Welcome back, {typedProfile?.full_name || 'Teacher'}
         </p>
+        {orgName && (
+          <p className="mt-1 text-sm font-medium text-indigo-600">
+            School: {orgName}
+          </p>
+        )}
       </div>
 
       {/* Stats Cards */}
