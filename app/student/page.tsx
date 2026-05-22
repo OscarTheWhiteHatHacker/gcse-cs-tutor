@@ -42,40 +42,17 @@ async function getStudentData(): Promise<{
     redirect('/auth/login')
   }
 
-  // Fetch profile with org info
+  // Fetch profile
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profileList } = await (supabase.from('profiles') as any)
-    .select('full_name, organization_id')
+    .select('full_name')
     .eq('id', user.id)
     .limit(1)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const profile = (profileList as any[] | null)?.[0] || null
-  const organizationId = profile?.organization_id
 
-  if (!organizationId) {
-    return {
-      profile,
-      completedSets: [],
-      totalQuestionsCompleted: 0,
-      averageScore: 0,
-      averagePercentage: 0,
-      totalCompletedSets: 0,
-      totalPossibleScore: 0,
-    }
-  }
-
-  // Get all teacher IDs in the same organization
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: orgTeachers } = await (supabase.from('profiles') as any)
-    .select('id')
-    .eq('role', 'teacher')
-    .eq('organization_id', organizationId)
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const teacherIdsInOrg = ((orgTeachers as any[] | null) || []).map((t: any) => t.id)
-
-  // Get all question sets created by teachers in this org
+  // Get all question sets with subtopic info
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: allSets } = await (supabase.from('question_sets') as any)
     .select(`
@@ -87,7 +64,6 @@ async function getStudentData(): Promise<{
         )
       )
     `)
-    .in('teacher_id', teacherIdsInOrg)
     .order('created_at', { ascending: false })
 
   if (!allSets) {

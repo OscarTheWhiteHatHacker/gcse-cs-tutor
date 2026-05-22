@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 
 type TopicRow = {
   id: string
@@ -32,35 +32,6 @@ async function getTopic(topicId: string): Promise<TopicRow | null> {
 async function getReleasedSubtopics(topicId: string): Promise<SubtopicRow[]> {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    redirect('/auth/login')
-  }
-
-  // Get the student's organization
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profileList } = await (supabase.from('profiles') as any)
-    .select('organization_id')
-    .eq('id', user.id)
-    .limit(1)
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const profile = (profileList as any[] | null)?.[0]
-  const organizationId = profile?.organization_id
-
-  if (!organizationId) return []
-
-  // Get all teacher IDs in the same organization
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: orgTeachers } = await (supabase.from('profiles') as any)
-    .select('id')
-    .eq('role', 'teacher')
-    .eq('organization_id', organizationId)
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const teacherIdsInOrg = ((orgTeachers as any[] | null) || []).map((t: any) => t.id)
-
-  // Get all subtopics for this topic
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (supabase.from('subtopics') as any)
     .select('*')
@@ -69,11 +40,9 @@ async function getReleasedSubtopics(topicId: string): Promise<SubtopicRow[]> {
 
   if (!data) return []
 
-  // Get released subtopics by teachers in this org
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: releasedData } = await (supabase.from('released_subtopics') as any)
     .select('subtopic_id')
-    .in('teacher_id', teacherIdsInOrg)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const releasedIds = new Set((releasedData as any[])?.map((r: any) => r.subtopic_id) || [])

@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
 type TopicSummary = {
@@ -13,35 +12,7 @@ type TopicSummary = {
 async function getReleasedTopics(): Promise<TopicSummary[]> {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    redirect('/auth/login')
-  }
-
-  // Get the student's organization
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profileList } = await (supabase.from('profiles') as any)
-    .select('organization_id')
-    .eq('id', user.id)
-    .limit(1)
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const profile = (profileList as any[] | null)?.[0]
-  const organizationId = profile?.organization_id
-
-  if (!organizationId) return []
-
-  // Get all teacher IDs in the same organization
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: orgTeachers } = await (supabase.from('profiles') as any)
-    .select('id')
-    .eq('role', 'teacher')
-    .eq('organization_id', organizationId)
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const teacherIdsInOrg = ((orgTeachers as any[] | null) || []).map((t: any) => t.id)
-
-  // Get all released subtopics by teachers in this org, join with topics
+  // Get all released subtopics, join with topics to find which topics have released content
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: releasedData } = await (supabase.from('released_subtopics') as any)
     .select(`
@@ -56,7 +27,6 @@ async function getReleasedTopics(): Promise<TopicSummary[]> {
         )
       )
     `)
-    .in('teacher_id', teacherIdsInOrg)
 
   if (!releasedData || releasedData.length === 0) return []
 
