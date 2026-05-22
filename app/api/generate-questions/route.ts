@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-async function generateViaAI(subtopicTitle: string): Promise<string> {
-  const prompt = `You are an expert OCR GCSE Computer Science examiner. Generate 5 exam-style questions for the subtopic: ${subtopicTitle}. Each question should have: question text, marks available (1-5), and a detailed mark scheme. Return the response as a JSON array where each item has: {question: string, marks: number, mark_scheme: string}. Only return the JSON array, no other text.`
+async function generateViaAI(subtopicTitle: string, lessonContent: string): Promise<string> {
+  const prompt = `You are an expert OCR GCSE Computer Science examiner. Generate 5 exam-style questions specifically based on the following lesson content for "${subtopicTitle}".
+
+LESSON CONTENT:
+${lessonContent}
+
+Each question should: test understanding of the material above, have marks (1-5), and include a detailed mark scheme based on the lesson content. Return ONLY a JSON array where each item has: {question: string, marks: number, mark_scheme: string}. Only return the JSON array, no other text.`
 
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -99,10 +104,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing subtopicId' }, { status: 400 })
   }
 
-  // Fetch the subtopic to get its title
+  // Fetch the subtopic to get its title and lesson content
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: subtopicList } = await (supabase.from('subtopics') as any)
-    .select('title')
+    .select('title, content_json')
     .eq('id', subtopicId)
     .limit(1)
 
@@ -114,10 +119,35 @@ export async function POST(request: Request) {
 
   const subtopicTitle = subtopic.title
 
-  // Call OpenRouter
+  // Build lesson content summary for the AI prompt
+  const content = subtopic.content_json as Record<string, unknown> | null
+  let lessonContent = subtopicTitle
+  if (content && typeof content === 'object') {
+    const parts: string[] = []
+    if (Array.isArray(content.learning_objectives)) {
+      parts.push('LEARNING OBJECTIVES:\n' + (content.learning_objectives as string[]).map((o: string) => '- ' + o).join('\n'))
+    }
+    if (typeof content.explanation === 'string') {
+      // Truncate explanation to avoid exceeding token limits
+      const expl = (content.explanation as string).substring(0, 3000)
+      parts.push('EXPLANATION:\n' + expl)
+    }
+    if (Array.isArray(content.key_points)) {
+      parts.push('KEY POINTS:\n' + (content.key_points as string[]).map((k: string) => '- ' + k).join('\n'))
+    }
+    if (Array.isArray(content.examples)) {
+      parts.push('EXAMPLES:\n' + (content.examples as string[]).map((e: string) => '- ' + e).join('\n'))
+    }
+    if (Array.isArray(content.common_misconceptions)) {
+      parts.push('COMMON MISCONCEPTIONS:\n' + (content.common_misconceptions as string[]).map((m: string) => '- ' + m).join('\n'))
+    }
+    lessonContent = parts.join('\n\n')
+  }
+
+  // Call Groq
   let rawText: string
   try {
-    rawText = await generateViaAI(subtopicTitle)
+    rawText = await generateViaAI(subtopicTitle, lessonContent)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error generating questions'
     return NextResponse.json({
