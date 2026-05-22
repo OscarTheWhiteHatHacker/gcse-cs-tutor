@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-async function generateViaOpenRouter(subtopicTitle: string): Promise<string> {
+async function generateViaAI(subtopicTitle: string): Promise<string> {
   const prompt = `You are an expert OCR GCSE Computer Science examiner. Generate 5 exam-style questions for the subtopic: ${subtopicTitle}. Each question should have: question text, marks available (1-5), and a detailed mark scheme. Return the response as a JSON array where each item has: {question: string, marks: number, mark_scheme: string}. Only return the JSON array, no other text.`
 
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -11,7 +11,7 @@ async function generateViaOpenRouter(subtopicTitle: string): Promise<string> {
       Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'mixtral-8x7b-32768',
+      model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
       max_tokens: 2500,
@@ -20,7 +20,7 @@ async function generateViaOpenRouter(subtopicTitle: string): Promise<string> {
 
   if (!response.ok) {
     const errorBody = await response.text()
-    let errorMessage = `OpenRouter returned ${response.status}`
+    let errorMessage = `Groq returned ${response.status}`
     try {
       const errorJson = JSON.parse(errorBody)
       if (errorJson.error?.message) {
@@ -36,7 +36,7 @@ async function generateViaOpenRouter(subtopicTitle: string): Promise<string> {
   const rawContent = data?.choices?.[0]?.message?.content
 
   if (!rawContent) {
-    throw new Error('Empty response from OpenRouter')
+    throw new Error('Empty response from AI provider')
   }
 
   return rawContent
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
   // Call OpenRouter
   let rawText: string
   try {
-    rawText = await generateViaOpenRouter(subtopicTitle)
+    rawText = await generateViaAI(subtopicTitle)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error generating questions'
     return NextResponse.json({
