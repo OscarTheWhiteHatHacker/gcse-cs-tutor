@@ -22,9 +22,33 @@ async function getStudentQuestionSets(): Promise<QuestionSetInfo[]> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  // Get all question sets with their subtopic info
+  // Get student's organization_id
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: allSets } = await (supabase.from('question_sets') as any)
+  const { data: profileList } = await (supabase.from('profiles') as any)
+    .select('organization_id')
+    .eq('id', user.id)
+    .limit(1)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const studentProfile = (profileList as any[] | null)?.[0]
+  const studentOrgId = studentProfile?.organization_id
+
+  // Find teachers in same organization
+  let teacherIds: string[] = []
+  if (studentOrgId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: teachersInOrg } = await (supabase.from('profiles') as any)
+      .select('id')
+      .eq('role', 'teacher')
+      .eq('organization_id', studentOrgId)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    teacherIds = ((teachersInOrg as any[]) || []).map((t: any) => t.id)
+  }
+
+  // Build query for question sets
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let qsQuery = (supabase.from('question_sets') as any)
     .select(`
       *,
       subtopics!inner (
@@ -35,6 +59,13 @@ async function getStudentQuestionSets(): Promise<QuestionSetInfo[]> {
       )
     `)
     .order('created_at', { ascending: false })
+
+  if (teacherIds.length > 0) {
+    qsQuery = qsQuery.in('teacher_id', teacherIds)
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: allSets } = await qsQuery
 
   if (!allSets) return []
 

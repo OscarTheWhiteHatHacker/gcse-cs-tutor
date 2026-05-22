@@ -50,7 +50,7 @@ export default async function TeacherDashboard() {
     redirect('/auth/login')
   }
 
-  // Check teacher role
+  // Get teacher's profile with organization_id
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profileList } = await (supabase.from('profiles') as any)
     .select('*')
@@ -63,19 +63,28 @@ export default async function TeacherDashboard() {
     redirect('/student')
   }
 
-  // Fetch all students
+  const teacherOrgId = typedProfile.organization_id
+
+  // Fetch all students in the same organization
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: students } = await (supabase.from('profiles') as any)
+  let query = (supabase.from('profiles') as any)
     .select('id, full_name, email')
     .eq('role', 'student')
     .order('full_name', { ascending: true })
 
+  if (teacherOrgId) {
+    query = query.eq('organization_id', teacherOrgId)
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: students } = await query
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const studentList = (students || []) as StudentData[]
 
-  // Fetch all question sets with subtopic info
+  // Fetch all question sets by teachers in the same org
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: allSets } = await (supabase.from('question_sets') as any)
+  let qsQuery = (supabase.from('question_sets') as any)
     .select(`
       *,
       subtopics!inner (
@@ -86,6 +95,24 @@ export default async function TeacherDashboard() {
       )
     `)
     .order('created_at', { ascending: false })
+
+  if (teacherOrgId) {
+    // Filter question_sets by teachers in same org
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: teachersInOrg } = await (supabase.from('profiles') as any)
+      .select('id')
+      .eq('role', 'teacher')
+      .eq('organization_id', teacherOrgId)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const teacherIds = ((teachersInOrg as any[]) || []).map((t: { id: string }) => t.id)
+    if (teacherIds.length > 0) {
+      qsQuery = qsQuery.in('teacher_id', teacherIds)
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: allSets } = await qsQuery
 
   // Build question set list with subtopic titles
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

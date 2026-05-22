@@ -45,11 +45,40 @@ async function getTopic(topicId: string): Promise<TopicData | null> {
 
 async function checkReleased(subtopicId: string) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+
+  // Get student's organization_id
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profileList } = await (supabase.from('profiles') as any)
+    .select('organization_id')
+    .eq('id', user.id)
+    .limit(1)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const studentProfile = (profileList as any[] | null)?.[0]
+  const studentOrgId = studentProfile?.organization_id
+
+  // Find teachers in same organization
+  let teacherIds: string[] = []
+  if (studentOrgId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: teachersInOrg } = await (supabase.from('profiles') as any)
+      .select('id')
+      .eq('role', 'teacher')
+      .eq('organization_id', studentOrgId)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    teacherIds = ((teachersInOrg as any[]) || []).map((t: any) => t.id)
+  }
+
+  if (teacherIds.length === 0) return false
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (supabase.from('released_subtopics') as any)
     .select('id')
     .eq('subtopic_id', subtopicId)
+    .in('teacher_id', teacherIds)
     .limit(1)
 
   return data && (data as unknown[]).length > 0

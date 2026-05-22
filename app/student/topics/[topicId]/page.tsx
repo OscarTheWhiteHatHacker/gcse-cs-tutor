@@ -32,23 +32,56 @@ async function getTopic(topicId: string): Promise<TopicRow | null> {
 async function getReleasedSubtopics(topicId: string): Promise<SubtopicRow[]> {
   const supabase = await createClient()
 
+  // Get current user's organization_id
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data } = await (supabase.from('subtopics') as any)
-    .select('*')
-    .eq('topic_id', topicId)
-    .order('order_number', { ascending: true })
+  const { data: profileList } = await (supabase.from('profiles') as any)
+    .select('organization_id')
+    .eq('id', user.id)
+    .limit(1)
 
-  if (!data) return []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const studentProfile = (profileList as any[] | null)?.[0]
+  const studentOrgId = studentProfile?.organization_id
 
+  // Find teachers in same organization
+  let teacherIds: string[] = []
+  if (studentOrgId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: teachersInOrg } = await (supabase.from('profiles') as any)
+      .select('id')
+      .eq('role', 'teacher')
+      .eq('organization_id', studentOrgId)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    teacherIds = ((teachersInOrg as any[]) || []).map((t: any) => t.id)
+  }
+
+  // Get released subtopic IDs for this topic by teachers in same org
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: releasedData } = await (supabase.from('released_subtopics') as any)
-    .select('subtopic_id')
+    .select(`
+      subtopic_id
+    `)
+    .filter('teacher_id', 'in', `(${teacherIds.map((id: string) => `"${id}"`).join(',')})`)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const releasedIds = new Set((releasedData as any[])?.map((r: any) => r.subtopic_id) || [])
 
+  if (releasedIds.size === 0) return []
+
+  // Get all subtopics for this topic that are in released set
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return data.filter((s: any) => releasedIds.has(s.id))
+  const { data } = await (supabase.from('subtopics') as any)
+    .select('*')
+    .eq('topic_id', topicId)
+    .in('id', Array.from(releasedIds))
+    .order('order_number', { ascending: true })
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]) || []
 }
 
 export default async function StudentTopicDetailPage({

@@ -42,19 +42,34 @@ async function getStudentData(): Promise<{
     redirect('/auth/login')
   }
 
-  // Fetch profile
+  // Fetch profile with organization_id
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profileList } = await (supabase.from('profiles') as any)
-    .select('full_name')
+    .select('full_name, organization_id')
     .eq('id', user.id)
     .limit(1)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const profile = (profileList as any[] | null)?.[0] || null
+  const studentOrgId = profile?.organization_id
 
-  // Get all question sets with subtopic info
+  // Get all question sets from teachers in the same organization
+  // First, find teachers in same org
+  let teacherIds: string[] = []
+  if (studentOrgId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: teachersInOrg } = await (supabase.from('profiles') as any)
+      .select('id')
+      .eq('role', 'teacher')
+      .eq('organization_id', studentOrgId)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    teacherIds = ((teachersInOrg as any[]) || []).map((t: any) => t.id)
+  }
+
+  // Build query for question sets
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: allSets } = await (supabase.from('question_sets') as any)
+  let qsQuery = (supabase.from('question_sets') as any)
     .select(`
       *,
       subtopics!inner (
@@ -65,6 +80,13 @@ async function getStudentData(): Promise<{
       )
     `)
     .order('created_at', { ascending: false })
+
+  if (teacherIds.length > 0) {
+    qsQuery = qsQuery.in('teacher_id', teacherIds)
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: allSets } = await qsQuery
 
   if (!allSets) {
     return {

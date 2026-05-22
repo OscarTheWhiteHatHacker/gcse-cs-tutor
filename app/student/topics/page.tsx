@@ -12,9 +12,36 @@ type TopicSummary = {
 async function getReleasedTopics(): Promise<TopicSummary[]> {
   const supabase = await createClient()
 
-  // Get all released subtopics, join with topics to find which topics have released content
+  // Get current user's organization_id
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: releasedData } = await (supabase.from('released_subtopics') as any)
+  const { data: profileList } = await (supabase.from('profiles') as any)
+    .select('organization_id')
+    .eq('id', user.id)
+    .limit(1)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const studentProfile = (profileList as any[] | null)?.[0]
+  const studentOrgId = studentProfile?.organization_id
+
+  // Find teachers in same organization
+  let teacherIds: string[] = []
+  if (studentOrgId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: teachersInOrg } = await (supabase.from('profiles') as any)
+      .select('id')
+      .eq('role', 'teacher')
+      .eq('organization_id', studentOrgId)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    teacherIds = ((teachersInOrg as any[]) || []).map((t: any) => t.id)
+  }
+
+  // Get all released subtopics by teachers in this org
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let releasedQuery = (supabase.from('released_subtopics') as any)
     .select(`
       subtopic_id,
       subtopics!inner (
@@ -27,6 +54,13 @@ async function getReleasedTopics(): Promise<TopicSummary[]> {
         )
       )
     `)
+
+  if (teacherIds.length > 0) {
+    releasedQuery = releasedQuery.in('teacher_id', teacherIds)
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: releasedData } = await releasedQuery
 
   if (!releasedData || releasedData.length === 0) return []
 
