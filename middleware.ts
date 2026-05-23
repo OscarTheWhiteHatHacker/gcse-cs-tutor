@@ -12,10 +12,10 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/auth/login') || pathname.startsWith('/auth/signup')) {
     if (user && role) {
       if (role === 'teacher') {
-        return NextResponse.redirect(new URL('/teacher', request.url))
+        return NextResponse.redirect(new URL('/teacher', request.url), { status: 303 })
       }
       if (role === 'student') {
-        return NextResponse.redirect(new URL('/student', request.url))
+        return NextResponse.redirect(new URL('/student', request.url), { status: 303 })
       }
     }
     return supabaseResponse
@@ -25,13 +25,23 @@ export async function middleware(request: NextRequest) {
   if (!user) {
     const redirectUrl = new URL('/auth/login', request.url)
     redirectUrl.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(redirectUrl)
+    return NextResponse.redirect(redirectUrl, { status: 303 })
+  }
+
+  // Root page - redirect to dashboard based on role
+  if (pathname === '/') {
+    if (role === 'teacher') {
+      return NextResponse.redirect(new URL('/teacher', request.url), { status: 303 })
+    }
+    if (role === 'student') {
+      return NextResponse.redirect(new URL('/student', request.url), { status: 303 })
+    }
   }
 
   // Teacher routes - role check from JWT
   if (pathname.startsWith('/teacher')) {
     if (role !== 'teacher') {
-      return NextResponse.redirect(new URL('/student', request.url))
+      return NextResponse.redirect(new URL('/student', request.url), { status: 303 })
     }
     return supabaseResponse
   }
@@ -39,7 +49,7 @@ export async function middleware(request: NextRequest) {
   // Student routes - role check from JWT
   if (pathname.startsWith('/student')) {
     if (role !== 'student') {
-      return NextResponse.redirect(new URL('/teacher', request.url))
+      return NextResponse.redirect(new URL('/teacher', request.url), { status: 303 })
     }
     return supabaseResponse
   }
