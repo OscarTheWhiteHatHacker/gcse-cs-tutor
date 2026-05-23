@@ -163,20 +163,17 @@ export default function SignupPage() {
         const { data: { user: newUser } } = await supabase.auth.getUser()
 
         if (newUser) {
-          // Create profile with organization_id
+          // Update profile with organization_id (trigger already created base row)
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { error: profileError } = await (supabase.from('profiles') as any)
-            .insert({
-              id: newUser.id,
-              email: placeholderEmail,
-              role: 'student',
-              full_name: fullName.trim(),
+            .update({
               username: username.trim(),
               organization_id: orgId,
             })
+            .eq('id', newUser.id)
 
           if (profileError) {
-            console.error('Failed to create profile:', profileError)
+            console.error('Failed to update profile:', profileError)
           }
 
           // Try to sign in immediately (works if email confirmation is disabled)
@@ -221,20 +218,17 @@ export default function SignupPage() {
         const { data: { user: newUser } } = await supabase.auth.getUser()
 
         if (newUser) {
-          // Create profile with organization_id
+          // Update profile with organization_id (trigger already created base row)
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { error: profileError } = await (supabase.from('profiles') as any)
-            .insert({
-              id: newUser.id,
-              email: placeholderEmail,
-              role: 'teacher',
-              full_name: fullName.trim(),
+            .update({
               username: username.trim(),
               organization_id: orgId,
             })
+            .eq('id', newUser.id)
 
           if (profileError) {
-            console.error('Failed to create profile:', profileError)
+            console.error('Failed to update profile:', profileError)
           }
 
           // Try to sign in immediately
