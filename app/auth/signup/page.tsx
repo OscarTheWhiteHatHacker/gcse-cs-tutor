@@ -24,6 +24,7 @@ export default function SignupPage() {
   const [schoolSlug, setSchoolSlug] = useState('')
 
   // Step 3: Personal details
+  const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -206,11 +207,12 @@ export default function SignupPage() {
         setSuccessMessage('Account created successfully! You can now sign in.')
         setSuccess(true)
       } else {
-        // Teacher signup with placeholder email (no confirmation needed)
-        const placeholderEmail = `${username.trim()}@teacher.gcse.local`
+        // Teacher signup - use real email if provided, otherwise placeholder
+        const useRealEmail = email.trim().length > 0
+        const signInEmail = useRealEmail ? email.trim() : `${username.trim()}@teacher.gcse.local`
 
         const { error: signUpError } = await supabase.auth.signUp({
-          email: placeholderEmail,
+          email: signInEmail,
           password,
           options: {
             data: {
@@ -218,12 +220,16 @@ export default function SignupPage() {
               role: 'teacher',
               username: username.trim(),
             },
-            emailRedirectTo: undefined,
+            emailRedirectTo: useRealEmail ? `${location.origin}/auth/callback` : undefined,
           },
         })
 
         if (signUpError) {
-          setError(signUpError.message)
+          if (signUpError.message?.includes('already registered') || signUpError.message?.includes('already in use')) {
+            setError('This email is already registered. Please use a different email or sign in.')
+          } else {
+            setError(signUpError.message)
+          }
           setLoading(false)
           return
         }
@@ -245,20 +251,28 @@ export default function SignupPage() {
             console.error('Failed to update profile:', profileError)
           }
 
-          // Try to sign in immediately
-          const { error: signInError } = await supabase.auth.signInWithPassword({
-            email: placeholderEmail,
-            password,
-          })
+          if (!useRealEmail) {
+            // Try to sign in immediately (placeholder email - no confirmation needed)
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+              email: signInEmail,
+              password,
+            })
 
-          if (!signInError) {
-            router.push('/teacher')
-            router.refresh()
-            return
+            if (!signInError) {
+              router.push('/teacher')
+              router.refresh()
+              return
+            }
           }
         }
 
-        setSuccessMessage('Account created successfully! You can now sign in.')
+        if (useRealEmail) {
+          setSuccessMessage(
+            `We've sent a confirmation link to ${signInEmail}. Please check your email and click the link to activate your account.`
+          )
+        } else {
+          setSuccessMessage('Account created successfully! You can now sign in.')
+        }
         setSuccess(true)
       }
     } catch (err) {
@@ -518,22 +532,40 @@ export default function SignupPage() {
               <h2 className="text-lg font-semibold text-gray-900">Your details</h2>
 
               {isTeacher && (
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                    Username
-                  </label>
-                  <input
-                    id="email"
-                    type="text"
-                    required
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm text-gray-900"
-                    placeholder="e.g. jdoe"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    This will be your username to sign in
-                  </p>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                      Username
+                    </label>
+                    <input
+                      id="username"
+                      type="text"
+                      required
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm text-gray-900"
+                      placeholder="e.g. jdoe"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      This will be your username to sign in
+                    </p>
+                  </div>
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                      Email address <span className="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm text-gray-900"
+                      placeholder="you@school.com"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      If provided, you&apos;ll use this email to sign in and receive confirmation
+                    </p>
+                  </div>
                 </div>
               )}
 
