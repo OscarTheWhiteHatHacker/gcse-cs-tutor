@@ -31,21 +31,32 @@ export default function LoginPage() {
           setLoading(false)
           return
         }
-        // Look up the email from the profiles table by username
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const profileQuery = (supabase.from('profiles') as any)
-          .select('email')
-          .eq('username', username.trim())
-          .maybeSingle()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: profile, error: lookupError } = await (profileQuery as Promise<{ data: any | null; error: any }>)
-
-        if (lookupError || !profile) {
-          setError('No account found with that username')
-          setLoading(false)
-          return
+      // Look up the email from the profiles table by username
+      // Use server API to bypass RLS (anonymous users can't read profiles)
+      let profileEmail: string | null = null
+      try {
+        const lookupRes = await fetch('/api/lookup-username', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: username.trim(),
+            secret: 'wipe-my-data-2026',
+          }),
+        })
+        if (lookupRes.ok) {
+          const lookupData = await lookupRes.json()
+          profileEmail = lookupData.email
         }
-        loginEmail = profile.email
+      } catch (e) {
+        console.error('Username lookup failed:', e)
+      }
+
+      if (!profileEmail) {
+        setError('No account found with that username')
+        setLoading(false)
+        return
+      }
+      loginEmail = profileEmail
       }
 
       const { error } = await supabase.auth.signInWithPassword({
