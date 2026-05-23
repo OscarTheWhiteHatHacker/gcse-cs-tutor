@@ -90,197 +90,50 @@ export default function SignupPage() {
         return
       }
 
-      // Step 1: Create organization if needed
-      let orgId: string | null = null
+      // Build request to server-side signup API
+      const signupPayload: Record<string, unknown> = {
+        username: username.trim(),
+        password,
+        fullName: fullName.trim(),
+        role: isStudent ? 'student' : 'teacher',
+        secret: 'wipe-my-data-2026',
+      }
 
       if (isTeacher && schoolAction === 'create') {
-        const slug = slugify(schoolName)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: newOrg, error: orgError } = await (supabase.from('organizations') as any)
-          .insert({ name: schoolName.trim(), slug })
-          .select('id')
-          .single()
-
-        if (orgError) {
-          // If slug already exists, try appending random suffix
-          if (orgError.message?.includes('duplicate') || orgError.code === '23505') {
-            const suffix = Math.random().toString(36).substring(2, 6)
-            const newSlug = `${slug}-${suffix}`
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data: retryOrg, error: retryError } = await (supabase.from('organizations') as any)
-              .insert({ name: schoolName.trim(), slug: newSlug })
-              .select('id')
-              .single()
-
-            if (retryError) {
-              setError(`Failed to create organization: ${retryError.message}`)
-              setLoading(false)
-              return
-            }
-            orgId = retryOrg.id
-          } else {
-            setError(`Failed to create organization: ${orgError.message}`)
-            setLoading(false)
-            return
-          }
-        } else {
-          orgId = newOrg.id
-        }
+        signupPayload.orgAction = 'create'
+        signupPayload.orgName = schoolName.trim()
       } else {
-        // Joining existing org or student joining by slug
-        const slug = isStudent ? schoolSlug.trim() : schoolSlug.trim()
-        if (!slug) {
-          setError('Please enter a school code')
-          setLoading(false)
-          return
-        }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: orgData } = await (supabase.from('organizations') as any)
-          .select('id')
-          .eq('slug', slug)
-          .limit(1)
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const foundOrg = (orgData as any[] | null)?.[0]
-        if (!foundOrg) {
-          setError('School not found. Please check the code and try again.')
-          setLoading(false)
-          return
-        }
-        orgId = foundOrg.id
+        signupPayload.orgSlug = schoolSlug.trim()
       }
 
-      // Step 2: Sign up with auth
-      if (isStudent) {
-        // Student signup with placeholder email
-        const placeholderEmail = `${username.trim()}@student.gcse.local`
+      const response = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(signupPayload),
+      })
 
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: placeholderEmail,
-          password,
-          options: {
-            data: {
-              full_name: fullName.trim(),
-              role: 'student',
-              username: username.trim(),
-            },
-            emailRedirectTo: undefined,
-          },
-        })
+      const result = await response.json()
 
-        if (signUpError) {
-          setError(signUpError.message)
-          setLoading(false)
-          return
-        }
-
-        const newUser = signUpData?.user
-
-        // Call server API to confirm email and set profile data
-        if (newUser?.id) {
-          try {
-            await fetch('/api/complete-signup', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                userId: newUser.id,
-                username: username.trim(),
-                organizationId: orgId,
-                secret: 'wipe-my-data-2026',
-              }),
-            })
-          } catch (e) {
-            console.error('Failed to complete signup:', e)
-          }
-        }
-
-        // Try to sign in immediately (now works because email is confirmed by server)
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: placeholderEmail,
-          password,
-        })
-
-        if (!signInError) {
-          router.push('/student')
-          router.refresh()
-          return
-        }
-
-        setSuccessMessage('Account created successfully! You can now sign in.')
-        setSuccess(true)
-      } else {
-        // Teacher signup - use real email if provided, otherwise placeholder
-        const useRealEmail = email.trim().length > 0
-        const signInEmail = useRealEmail ? email.trim() : `${username.trim()}@teacher.gcse.local`
-
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: signInEmail,
-          password,
-          options: {
-            data: {
-              full_name: fullName.trim(),
-              role: 'teacher',
-              username: username.trim(),
-            },
-            emailRedirectTo: useRealEmail ? `${location.origin}/auth/callback` : undefined,
-          },
-        })
-
-        if (signUpError) {
-          if (signUpError.message?.includes('already registered') || signUpError.message?.includes('already in use')) {
-            setError('This email is already registered. Please use a different email or sign in.')
-          } else {
-            setError(signUpError.message)
-          }
-          setLoading(false)
-          return
-        }
-
-        if (!useRealEmail) {
-          const newUser = signUpData?.user
-
-          // Call server API to confirm email and set profile data
-          if (newUser?.id) {
-            try {
-              await fetch('/api/complete-signup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  userId: newUser.id,
-                  username: username.trim(),
-                  organizationId: orgId,
-                  secret: 'wipe-my-data-2026',
-                }),
-              })
-            } catch (e) {
-              console.error('Failed to complete signup:', e)
-            }
-          }
-
-          // Try to sign in immediately (now works because email is confirmed by server)
-          const { error: signInError } = await supabase.auth.signInWithPassword({
-            email: signInEmail,
-            password,
-          })
-
-          if (!signInError) {
-            router.push('/teacher')
-            router.refresh()
-            return
-          }
-        }
-
-        if (useRealEmail) {
-          // Real email - needs confirmation, can't sign in yet
-          // Profile update will happen via the auth callback/trigger
-          setSuccessMessage(
-            `We've sent a confirmation link to ${signInEmail}. Please check your email and click the link to activate your account.`
-          )
-        } else {
-          setSuccessMessage('Account created successfully! You can now sign in.')
-        }
-        setSuccess(true)
+      if (!response.ok) {
+        setError(result.error || 'Failed to create account')
+        setLoading(false)
+        return
       }
+
+      // Sign in with the created account
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: result.email,
+        password,
+      })
+
+      if (!signInError) {
+        router.push(isStudent ? '/student' : '/teacher')
+        router.refresh()
+        return
+      }
+
+      setSuccessMessage('Account created successfully! You can now sign in.')
+      setSuccess(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
