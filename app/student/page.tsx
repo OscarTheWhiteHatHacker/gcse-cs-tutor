@@ -42,19 +42,25 @@ async function getStudentData(): Promise<{
     redirect('/auth/login')
   }
 
-  // Fetch profile with organization_id
+  // Fetch profile and student answers in parallel (both only need user.id)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profileList } = await (supabase.from('profiles') as any)
-    .select('full_name, organization_id')
-    .eq('id', user.id)
-    .limit(1)
+  const [{ data: profileList }, { data: allAnswers }] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from('profiles') as any)
+      .select('full_name, organization_id')
+      .eq('id', user.id)
+      .limit(1),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from('student_answers') as any)
+      .select('id, question_set_id, total_score, submitted_at')
+      .eq('student_id', user.id),
+  ])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const profile = (profileList as any[] | null)?.[0] || null
   const studentOrgId = profile?.organization_id
 
-  // Get all question sets from teachers in the same organization
-  // First, find teachers in same org
+  // Find teachers in same org
   let teacherIds: string[] = []
   if (studentOrgId) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -99,12 +105,6 @@ async function getStudentData(): Promise<{
       totalPossibleScore: 0,
     }
   }
-
-  // Get all student answers for this student
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: allAnswers } = await (supabase.from('student_answers') as any)
-    .select('id, question_set_id, total_score, submitted_at')
-    .eq('student_id', user.id)
 
   // Build answer lookup map
   const answerMap = new Map<string, { id: string; total_score: number; submitted_at: string }>()

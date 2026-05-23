@@ -65,24 +65,44 @@ export default async function TeacherDashboard() {
 
   const teacherOrgId = typedProfile.organization_id
 
-  // Fetch all students in the same organization
+  // Run independent queries in parallel using Promise.all
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (supabase.from('profiles') as any)
+  let studentQuery = (supabase.from('profiles') as any)
     .select('id, full_name, email')
     .eq('role', 'student')
     .order('full_name', { ascending: true })
-
   if (teacherOrgId) {
-    query = query.eq('organization_id', teacherOrgId)
+    studentQuery = studentQuery.eq('organization_id', teacherOrgId)
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: students } = await query
+  let teacherIdsQuery = (supabase.from('profiles') as any)
+    .select('id')
+    .eq('role', 'teacher')
+  if (teacherOrgId) {
+    teacherIdsQuery = teacherIdsQuery.eq('organization_id', teacherOrgId)
+  }
+
+  // Fetch students, teacher IDs, and answers in parallel (answers doesn't depend on anything)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [[studentsResult, teacherIdsResult], { data: allAnswers }] = await Promise.all([
+    Promise.all([
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      studentQuery as Promise<{ data: any[] | null }>,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      teacherIdsQuery as Promise<{ data: any[] | null }>,
+    ]),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from('student_answers') as any)
+      .select('id, question_set_id, student_id, total_score, submitted_at'),
+  ])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const studentList = (students || []) as StudentData[]
+  const studentList = ((studentsResult?.data || []) as StudentData[]).filter(Boolean)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const teacherIds = ((teacherIdsResult?.data as any[]) || []).map((t: { id: string }) => t.id)
 
-  // Fetch all question sets by teachers in the same org
+  // Now fetch question sets using teacherIds (can't parallelize this further)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let qsQuery = (supabase.from('question_sets') as any)
     .select(`
@@ -95,20 +115,8 @@ export default async function TeacherDashboard() {
       )
     `)
     .order('created_at', { ascending: false })
-
-  if (teacherOrgId) {
-    // Filter question_sets by teachers in same org
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: teachersInOrg } = await (supabase.from('profiles') as any)
-      .select('id')
-      .eq('role', 'teacher')
-      .eq('organization_id', teacherOrgId)
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const teacherIds = ((teachersInOrg as any[]) || []).map((t: { id: string }) => t.id)
-    if (teacherIds.length > 0) {
-      qsQuery = qsQuery.in('teacher_id', teacherIds)
-    }
+  if (teacherIds.length > 0) {
+    qsQuery = qsQuery.in('teacher_id', teacherIds)
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -125,11 +133,6 @@ export default async function TeacherDashboard() {
     subtopic_title: set.subtopics?.title || 'Unknown Subtopic',
     subtopic_topic_title: set.subtopics?.topics?.title || 'Unknown Topic',
   }))
-
-  // Fetch all student answers
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: allAnswers } = await (supabase.from('student_answers') as any)
-    .select('id, question_set_id, student_id, total_score, submitted_at')
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const answerList = (allAnswers || []) as StudentAnswerData[]
