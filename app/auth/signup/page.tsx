@@ -174,24 +174,32 @@ export default function SignupPage() {
           return
         }
 
-        // Try to sign in immediately (creates a session so profile update works)
+        // Get the user ID from the signup response
+        const { data: { user: newUser } } = await supabase.auth.getUser()
+
+        // Call server API to confirm email and set profile data
+        try {
+          await fetch('/api/complete-signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: newUser?.id,
+              username: username.trim(),
+              organizationId: orgId,
+              secret: 'wipe-my-data-2026',
+            }),
+          })
+        } catch (e) {
+          console.error('Failed to complete signup:', e)
+        }
+
+        // Try to sign in immediately (now works because email is confirmed by server)
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email: placeholderEmail,
           password,
         })
 
         if (!signInError) {
-          // Now authenticated - update profile with organization_id
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (supabase.from('profiles') as any)
-              .update({
-                username: username.trim(),
-                organization_id: orgId,
-              })
-              .eq('id', user.id)
-          }
           router.push('/student')
           router.refresh()
           return
@@ -228,24 +236,32 @@ export default function SignupPage() {
         }
 
         if (!useRealEmail) {
-          // Try to sign in immediately (placeholder email, no confirmation needed)
+          // Get the user ID
+          const { data: { user: newUser } } = await supabase.auth.getUser()
+
+          // Call server API to confirm email and set profile data
+          try {
+            await fetch('/api/complete-signup', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: newUser?.id,
+                username: username.trim(),
+                organizationId: orgId,
+                secret: 'wipe-my-data-2026',
+              }),
+            })
+          } catch (e) {
+            console.error('Failed to complete signup:', e)
+          }
+
+          // Try to sign in immediately (now works because email is confirmed by server)
           const { error: signInError } = await supabase.auth.signInWithPassword({
             email: signInEmail,
             password,
           })
 
           if (!signInError) {
-            // Now authenticated - update profile with organization_id
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              await (supabase.from('profiles') as any)
-                .update({
-                  username: username.trim(),
-                  organization_id: orgId,
-                })
-                .eq('id', user.id)
-            }
             router.push('/teacher')
             router.refresh()
             return
