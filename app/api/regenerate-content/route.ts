@@ -70,11 +70,11 @@ Return a JSON object with these exact fields:
 
 Return ONLY valid JSON. No markdown wrapping, no extra text.`
 
-      // Wait 1.5s between calls to avoid rate limiting
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      // Wait 2.5s between calls to avoid rate limiting
+      await new Promise((resolve) => setTimeout(resolve, 2500))
 
       try {
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        let response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -87,6 +87,26 @@ Return ONLY valid JSON. No markdown wrapping, no extra text.`
             max_tokens: 3000,
           }),
         })
+
+        // Retry up to 3 times on rate limit
+        let retries = 0
+        while (response.status === 429 && retries < 3) {
+          retries++
+          await new Promise((resolve) => setTimeout(resolve, 4000 * retries))
+          response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+            },
+            body: JSON.stringify({
+              model: 'llama-3.3-70b-versatile',
+              messages: [{ role: 'user', content: prompt }],
+              temperature: 0.5,
+              max_tokens: 3000,
+            }),
+          })
+        }
 
         if (!response.ok) {
           results[sub.title] = `API error: ${response.status}`
@@ -101,7 +121,8 @@ Return ONLY valid JSON. No markdown wrapping, no extra text.`
           continue
         }
 
-        let cleaned = rawContent.trim()
+        // Strip control characters that break JSON.parse
+        let cleaned = rawContent.replace(/[\x00-\x1f\x7f-\x9f]/g, '').trim()
         if (cleaned.startsWith('```json') || cleaned.startsWith('```')) {
           cleaned = cleaned.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
         }
