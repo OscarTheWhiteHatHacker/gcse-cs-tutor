@@ -48,11 +48,15 @@ export default async function TeacherLayout({
               <div className="px-3 py-2">
                 <NavLink href="/teacher/topics">Topics</NavLink>
               </div>
+              <div className="px-3 py-2">
+                <NavLink href="/teacher/students">Students</NavLink>
+              </div>
             </nav>
             {/* Mobile nav */}
             <nav className="flex sm:hidden items-center gap-3">
               <Link href="/teacher" className="text-sm font-medium text-gray-600 hover:text-gray-900">D</Link>
               <Link href="/teacher/topics" className="text-sm font-medium text-gray-600 hover:text-gray-900">T</Link>
+              <Link href="/teacher/students" className="text-sm font-medium text-gray-600 hover:text-gray-900">S</Link>
             </nav>
           </div>
           <form action="/auth/signout" method="post">
