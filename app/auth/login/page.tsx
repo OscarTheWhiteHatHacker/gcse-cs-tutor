@@ -5,11 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
-type LoginMode = 'email' | 'username'
-
 export default function LoginPage() {
-  const [mode, setMode] = useState<LoginMode>('email')
-  const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -23,17 +19,14 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      let loginEmail = email
+      if (!username.trim()) {
+        setError('Please enter your username')
+        setLoading(false)
+        return
+      }
 
-      if (mode === 'username') {
-        if (!username.trim()) {
-          setError('Please enter your username')
-          setLoading(false)
-          return
-        }
-      // Look up the email from the profiles table by username
-      // Use server API to bypass RLS (anonymous users can't read profiles)
-      let profileEmail: string | null = null
+      // Look up the email from profiles by username via server API
+      let loginEmail: string | null = null
       try {
         const lookupRes = await fetch('/api/lookup-username', {
           method: 'POST',
@@ -45,18 +38,16 @@ export default function LoginPage() {
         })
         if (lookupRes.ok) {
           const lookupData = await lookupRes.json()
-          profileEmail = lookupData.email
+          loginEmail = lookupData.email
         }
-      } catch (e) {
-        console.error('Username lookup failed:', e)
+      } catch {
+        // fall through
       }
 
-      if (!profileEmail) {
+      if (!loginEmail) {
         setError('No account found with that username')
         setLoading(false)
         return
-      }
-      loginEmail = profileEmail
       }
 
       const { error } = await supabase.auth.signInWithPassword({
@@ -83,35 +74,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900">GCSE CS Tutor</h1>
-          <p className="mt-2 text-gray-600">Sign in to your account</p>
-        </div>
-
-        {/* Email / Username Toggle */}
-        <div className="flex rounded-lg bg-gray-100 p-1" role="tablist">
-          <button
-            role="tab"
-            aria-selected={mode === 'email'}
-            onClick={() => { setMode('email'); setError(null) }}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all ${
-              mode === 'email'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Email
-          </button>
-          <button
-            role="tab"
-            aria-selected={mode === 'username'}
-            onClick={() => { setMode('username'); setError(null) }}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all ${
-              mode === 'username'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Username
-          </button>
+          <p className="mt-2 text-gray-600">Sign in with your username</p>
         </div>
 
         <form onSubmit={handleLogin} className="mt-8 space-y-6">
@@ -121,37 +84,20 @@ export default function LoginPage() {
             </div>
           )}
 
-          {mode === 'email' ? (
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm text-gray-900"
-                placeholder="you@example.com"
-              />
-            </div>
-          ) : (
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                Username
-              </label>
-              <input
-                id="username"
-                type="text"
-                required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm text-gray-900"
-                placeholder="your username"
-              />
-            </div>
-          )}
+          <div>
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+              Username
+            </label>
+            <input
+              id="username"
+              type="text"
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm text-gray-900"
+              placeholder="your username"
+            />
+          </div>
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700">

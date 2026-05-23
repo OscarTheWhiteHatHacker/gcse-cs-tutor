@@ -5,7 +5,6 @@ import Link from 'next/link'
 interface StudentData {
   id: string
   full_name: string
-  email: string
 }
 
 interface QuestionSetData {
@@ -68,7 +67,7 @@ export default async function TeacherDashboard() {
   // Run independent queries in parallel using Promise.all
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let studentQuery = (supabase.from('profiles') as any)
-    .select('id, full_name, email')
+    .select('id, full_name')
     .eq('role', 'student')
     .order('full_name', { ascending: true })
   if (teacherOrgId) {
@@ -248,10 +247,7 @@ export default async function TeacherDashboard() {
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
                           {student.full_name?.charAt(0)?.toUpperCase() || '?'}
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{student.full_name}</p>
-                          <p className="text-xs text-gray-500">{student.email}</p>
-                        </div>
+                        <p className="text-sm font-medium text-gray-900">{student.full_name}</p>
                       </div>
                     </td>
                     {questionSets.map((set) => {

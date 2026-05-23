@@ -8,7 +8,6 @@ interface Student {
   id: string
   full_name: string
   username: string | null
-  email: string
 }
 
 export default function ManageStudentsPage() {
@@ -63,7 +62,7 @@ export default function ManageStudentsPage() {
     // Fetch students in same org
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: studentData } = await (supabase.from('profiles') as any)
-      .select('id, full_name, username, email')
+      .select('id, full_name, username')
       .eq('role', 'student')
       .eq('organization_id', teacherProfile.organization_id)
       .order('full_name', { ascending: true })
@@ -280,7 +279,6 @@ export default function ManageStudentsPage() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Username</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Email</th>
                 <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
               </tr>
             </thead>
@@ -315,7 +313,6 @@ export default function ManageStudentsPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.username || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.email}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
                       onClick={() => { setEditingId(student.id); setEditName(student.full_name); setError(null); setSuccess(null) }}
