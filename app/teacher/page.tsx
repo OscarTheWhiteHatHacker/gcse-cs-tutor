@@ -83,18 +83,13 @@ export default async function TeacherDashboard() {
     teacherIdsQuery = teacherIdsQuery.eq('organization_id', teacherOrgId)
   }
 
-  // Fetch students, teacher IDs, and answers in parallel (answers doesn't depend on anything)
+  // Fetch students and teacher IDs in parallel
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [[studentsResult, teacherIdsResult], { data: allAnswers }] = await Promise.all([
-    Promise.all([
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      studentQuery as Promise<{ data: any[] | null }>,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      teacherIdsQuery as Promise<{ data: any[] | null }>,
-    ]),
+  const [studentsResult, teacherIdsResult] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase.from('student_answers') as any)
-      .select('id, question_set_id, student_id, total_score, submitted_at'),
+    studentQuery as Promise<{ data: any[] | null }>,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    teacherIdsQuery as Promise<{ data: any[] | null }>,
   ])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -102,7 +97,7 @@ export default async function TeacherDashboard() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const teacherIds = ((teacherIdsResult?.data as any[]) || []).map((t: { id: string }) => t.id)
 
-  // Now fetch question sets using teacherIds (can't parallelize this further)
+  // Now fetch question sets using teacherIds
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let qsQuery = (supabase.from('question_sets') as any)
     .select(`
@@ -133,6 +128,17 @@ export default async function TeacherDashboard() {
     subtopic_title: set.subtopics?.title || 'Unknown Subtopic',
     subtopic_topic_title: set.subtopics?.topics?.title || 'Unknown Topic',
   }))
+
+  // Fetch student answers only for this org's question sets
+  const orgQuestionSetIds = questionSets.map((s) => s.id)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let answersQuery = (supabase.from('student_answers') as any)
+    .select('id, question_set_id, student_id, total_score, submitted_at')
+  if (orgQuestionSetIds.length > 0) {
+    answersQuery = answersQuery.in('question_set_id', orgQuestionSetIds)
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: allAnswers } = await answersQuery
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const answerList = (allAnswers || []) as StudentAnswerData[]
