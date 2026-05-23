@@ -23,7 +23,12 @@ export default async function StudentLayout({
     .single()
 
   const typedProfile = profile as Database['public']['Tables']['profiles']['Row'] | null
-  if (!typedProfile || typedProfile.role !== 'student') {
+  if (!typedProfile) {
+    // Profile was deleted (e.g. DB wipe) - sign out
+    await supabase.auth.signOut()
+    redirect('/auth/login')
+  }
+  if (typedProfile.role !== 'student') {
     redirect('/teacher')
   }
 
