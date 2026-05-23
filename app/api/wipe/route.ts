@@ -15,14 +15,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' }, { status: 500 })
     }
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      serviceKey,
-      { cookies: { getAll: () => [], setAll: () => {} } }
-    )
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabase = createServerClient(supabaseUrl, serviceKey, {
+      cookies: { getAll: () => [], setAll: () => {} },
+    })
 
     const results: Record<string, string> = {}
 
+    // 1. Delete rows from public tables
     for (const table of TABLES) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error, count } = await (supabase.from(table) as any)
@@ -30,6 +30,24 @@ export async function POST(request: Request) {
         .neq('id', '00000000-0000-0000-0000-000000000000')
 
       results[table] = error ? `Error: ${error.message}` : `Deleted ${count ?? 'all'} rows`
+    }
+
+    // 2. Delete auth users (auth.users)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let deletedUsers = 0
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: usersData, error: listError } = await (supabase.auth.admin as any).listUsers()
+      if (!listError && usersData?.users) {
+        for (const user of usersData.users) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: delError } = await (supabase.auth.admin as any).deleteUser(user.id)
+          if (!delError) deletedUsers++
+        }
+      }
+      results['auth.users'] = `Deleted ${deletedUsers} users`
+    } catch (err) {
+      results['auth.users'] = `Error: ${err instanceof Error ? err.message : 'Failed to list users'}`
     }
 
     return NextResponse.json({ success: true, results })
