@@ -75,6 +75,20 @@ export default function SignupPage() {
     setError(null)
 
     try {
+      // Check if username is already taken
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: existingUsername } = await (supabase.from('profiles') as any)
+        .select('id')
+        .eq('username', username.trim())
+        .limit(1)
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((existingUsername as any[] | null)?.[0]) {
+        setError('This username is already taken. Please choose another one.')
+        setLoading(false)
+        return
+      }
+
       // Step 1: Create organization if needed
       let orgId: string | null = null
 
