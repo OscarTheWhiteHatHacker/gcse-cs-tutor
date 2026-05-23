@@ -122,10 +122,13 @@ Return ONLY valid JSON. No markdown wrapping, no extra text.`
         }
 
         // Strip control characters that break JSON.parse
-        let cleaned = rawContent.replace(/[\x00-\x1f\x7f-\x9f]/g, '').trim()
+        let cleaned = rawContent.trim()
         if (cleaned.startsWith('```json') || cleaned.startsWith('```')) {
           cleaned = cleaned.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
         }
+
+        // Replace all control characters with spaces (safe for JSON)
+        cleaned = cleaned.replace(/[\x00-\x1f\x7f-\x9f]/g, ' ').replace(/  +/g, ' ')
 
         const parsed = JSON.parse(cleaned)
 
