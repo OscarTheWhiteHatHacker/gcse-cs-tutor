@@ -64,6 +64,23 @@ export default async function TeacherDashboard() {
 
   const teacherOrgId = typedProfile.organization_id
 
+  // Fetch organization details
+  let orgName = ''
+  let orgSlug = ''
+  if (teacherOrgId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: orgData } = await (supabase.from('organizations') as any)
+      .select('name, slug')
+      .eq('id', teacherOrgId)
+      .limit(1)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const org = (orgData as any[] | null)?.[0]
+    if (org) {
+      orgName = org.name
+      orgSlug = org.slug
+    }
+  }
+
   // Run independent queries in parallel using Promise.all
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let studentQuery = (supabase.from('profiles') as any)
@@ -164,6 +181,15 @@ export default async function TeacherDashboard() {
         <p className="mt-1 text-gray-600">
           Welcome back, {typedProfile?.full_name || 'Teacher'}
         </p>
+        {orgName && orgSlug && (
+          <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+            <p className="text-sm font-medium text-indigo-900">{orgName}</p>
+            <p className="mt-1 text-sm text-indigo-700">
+              School code: <code className="rounded bg-indigo-100 px-2 py-0.5 font-mono text-indigo-800">{orgSlug}</code>
+              <span className="ml-2 text-xs text-indigo-500">— share this with your students to join</span>
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
