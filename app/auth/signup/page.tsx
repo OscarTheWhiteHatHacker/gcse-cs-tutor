@@ -174,34 +174,27 @@ export default function SignupPage() {
           return
         }
 
-        // Get the newly created user
-        const { data: { user: newUser } } = await supabase.auth.getUser()
+        // Try to sign in immediately (creates a session so profile update works)
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: placeholderEmail,
+          password,
+        })
 
-        if (newUser) {
-          // Update profile with organization_id (trigger already created base row)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { error: profileError } = await (supabase.from('profiles') as any)
-            .update({
-              username: username.trim(),
-              organization_id: orgId,
-            })
-            .eq('id', newUser.id)
-
-          if (profileError) {
-            console.error('Failed to update profile:', profileError)
+        if (!signInError) {
+          // Now authenticated - update profile with organization_id
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (supabase.from('profiles') as any)
+              .update({
+                username: username.trim(),
+                organization_id: orgId,
+              })
+              .eq('id', user.id)
           }
-
-          // Try to sign in immediately (works if email confirmation is disabled)
-          const { error: signInError } = await supabase.auth.signInWithPassword({
-            email: placeholderEmail,
-            password,
-          })
-
-          if (!signInError) {
-            router.push('/student')
-            router.refresh()
-            return
-          }
+          router.push('/student')
+          router.refresh()
+          return
         }
 
         setSuccessMessage('Account created successfully! You can now sign in.')
@@ -234,39 +227,34 @@ export default function SignupPage() {
           return
         }
 
-        // Get the newly created user
-        const { data: { user: newUser } } = await supabase.auth.getUser()
+        if (!useRealEmail) {
+          // Try to sign in immediately (placeholder email, no confirmation needed)
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: signInEmail,
+            password,
+          })
 
-        if (newUser) {
-          // Update profile with organization_id (trigger already created base row)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { error: profileError } = await (supabase.from('profiles') as any)
-            .update({
-              username: username.trim(),
-              organization_id: orgId,
-            })
-            .eq('id', newUser.id)
-
-          if (profileError) {
-            console.error('Failed to update profile:', profileError)
-          }
-
-          if (!useRealEmail) {
-            // Try to sign in immediately (placeholder email - no confirmation needed)
-            const { error: signInError } = await supabase.auth.signInWithPassword({
-              email: signInEmail,
-              password,
-            })
-
-            if (!signInError) {
-              router.push('/teacher')
-              router.refresh()
-              return
+          if (!signInError) {
+            // Now authenticated - update profile with organization_id
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              await (supabase.from('profiles') as any)
+                .update({
+                  username: username.trim(),
+                  organization_id: orgId,
+                })
+                .eq('id', user.id)
             }
+            router.push('/teacher')
+            router.refresh()
+            return
           }
         }
 
         if (useRealEmail) {
+          // Real email - needs confirmation, can't sign in yet
+          // Profile update will happen via the auth callback/trigger
           setSuccessMessage(
             `We've sent a confirmation link to ${signInEmail}. Please check your email and click the link to activate your account.`
           )
