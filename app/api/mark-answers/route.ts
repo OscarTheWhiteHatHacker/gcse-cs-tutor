@@ -20,7 +20,21 @@ async function markSingleAnswer(
   marks: number,
   attempt: number = 1
 ): Promise<{ score: number; feedback: string; suggestions: string }> {
-  const prompt = `You are an OCR GCSE Computer Science examiner. Mark this student answer. Question: ${question}. Mark scheme: ${markScheme}. Student answer: ${studentAnswer}. Marks available: ${marks}. Return JSON: {"score": number, "feedback": string, "suggestions": string}. Only return the JSON object.`
+  const prompt = `You are a strict OCR GCSE Computer Science examiner. Mark this student's answer critically against the mark scheme.
+
+Question: ${question}
+Mark scheme: ${markScheme}
+Student answer: ${studentAnswer}
+Marks available: ${marks}
+
+CRITICAL RULES:
+- The mark scheme states what is required for each mark. Only award marks if the student's answer explicitly includes the required content.
+- A vague or incomplete answer that does not fully address the question should receive ZERO or partial marks.
+- One-letter answers like "B", "A", "X", "LAN" etc. without explanation are NOT sufficient for any marks on a written question.
+- Be HARSH — if the answer doesn't clearly demonstrate the required knowledge, award 0.
+- If the answer is blank or nonsensical, award 0.
+
+Return JSON ONLY: {"score": number, "feedback": string, "suggestions": string}`
 
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -31,7 +45,7 @@ async function markSingleAnswer(
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
+      temperature: 0.2,
       max_tokens: 500,
     }),
   })
