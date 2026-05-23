@@ -155,7 +155,7 @@ export default function SignupPage() {
         // Student signup with placeholder email
         const placeholderEmail = `${username.trim()}@student.gcse.local`
 
-        const { error: signUpError } = await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: placeholderEmail,
           password,
           options: {
@@ -174,23 +174,24 @@ export default function SignupPage() {
           return
         }
 
-        // Get the user ID from the signup response
-        const { data: { user: newUser } } = await supabase.auth.getUser()
+        const newUser = signUpData?.user
 
         // Call server API to confirm email and set profile data
-        try {
-          await fetch('/api/complete-signup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: newUser?.id,
-              username: username.trim(),
-              organizationId: orgId,
-              secret: 'wipe-my-data-2026',
-            }),
-          })
-        } catch (e) {
-          console.error('Failed to complete signup:', e)
+        if (newUser?.id) {
+          try {
+            await fetch('/api/complete-signup', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: newUser.id,
+                username: username.trim(),
+                organizationId: orgId,
+                secret: 'wipe-my-data-2026',
+              }),
+            })
+          } catch (e) {
+            console.error('Failed to complete signup:', e)
+          }
         }
 
         // Try to sign in immediately (now works because email is confirmed by server)
@@ -212,7 +213,7 @@ export default function SignupPage() {
         const useRealEmail = email.trim().length > 0
         const signInEmail = useRealEmail ? email.trim() : `${username.trim()}@teacher.gcse.local`
 
-        const { error: signUpError } = await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: signInEmail,
           password,
           options: {
@@ -236,23 +237,24 @@ export default function SignupPage() {
         }
 
         if (!useRealEmail) {
-          // Get the user ID
-          const { data: { user: newUser } } = await supabase.auth.getUser()
+          const newUser = signUpData?.user
 
           // Call server API to confirm email and set profile data
-          try {
-            await fetch('/api/complete-signup', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                userId: newUser?.id,
-                username: username.trim(),
-                organizationId: orgId,
-                secret: 'wipe-my-data-2026',
-              }),
-            })
-          } catch (e) {
-            console.error('Failed to complete signup:', e)
+          if (newUser?.id) {
+            try {
+              await fetch('/api/complete-signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: newUser.id,
+                  username: username.trim(),
+                  organizationId: orgId,
+                  secret: 'wipe-my-data-2026',
+                }),
+              })
+            } catch (e) {
+              console.error('Failed to complete signup:', e)
+            }
           }
 
           // Try to sign in immediately (now works because email is confirmed by server)
