@@ -22,44 +22,49 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    let loginEmail = email
+    try {
+      let loginEmail = email
 
-    if (mode === 'username') {
-      if (!username.trim()) {
-        setError('Please enter your username')
+      if (mode === 'username') {
+        if (!username.trim()) {
+          setError('Please enter your username')
+          setLoading(false)
+          return
+        }
+        // Look up the email from the profiles table by username
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const profileQuery = (supabase.from('profiles') as any)
+          .select('email')
+          .eq('username', username.trim())
+          .maybeSingle()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: profile, error: lookupError } = await (profileQuery as Promise<{ data: any | null; error: any }>)
+
+        if (lookupError || !profile) {
+          setError('No account found with that username')
+          setLoading(false)
+          return
+        }
+        loginEmail = profile.email
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password,
+      })
+
+      if (error) {
+        setError(error.message)
         setLoading(false)
         return
       }
-      // Look up the email from the profiles table by username
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const profileQuery = (supabase.from('profiles') as any)
-        .select('email')
-        .eq('username', username.trim())
-        .maybeSingle()
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: profile, error: lookupError } = await (profileQuery as Promise<{ data: any | null; error: any }>)
 
-      if (lookupError || !profile) {
-        setError('No account found with that username')
-        setLoading(false)
-        return
-      }
-      loginEmail = profile.email
-    }
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email: loginEmail,
-      password,
-    })
-
-    if (error) {
-      setError(error.message)
+      router.push('/')
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
       setLoading(false)
-      return
     }
-
-    router.push('/')
-    router.refresh()
   }
 
   return (
