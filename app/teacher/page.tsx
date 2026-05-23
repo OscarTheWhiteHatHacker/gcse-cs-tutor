@@ -152,6 +152,10 @@ export default async function TeacherDashboard() {
     .select('id, question_set_id, student_id, total_score, submitted_at')
   if (orgQuestionSetIds.length > 0) {
     answersQuery = answersQuery.in('question_set_id', orgQuestionSetIds)
+  } else {
+    // No question sets in this org — no answers to show
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    answersQuery = answersQuery.eq('id', '00000000-0000-0000-0000-000000000000')
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: allAnswers } = await answersQuery
