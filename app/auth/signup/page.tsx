@@ -127,6 +127,17 @@ export default function SignupPage() {
       })
 
       if (!signInError) {
+        // Now authenticated - update profile with username and org
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase.from('profiles') as any)
+            .update({
+              username: username.trim(),
+              organization_id: result.organizationId || undefined,
+            })
+            .eq('id', user.id)
+        }
         router.push(isStudent ? '/student' : '/teacher')
         router.refresh()
         return

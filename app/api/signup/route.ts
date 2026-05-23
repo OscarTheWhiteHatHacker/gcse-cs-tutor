@@ -94,9 +94,14 @@ export async function POST(request: Request) {
       updateData.organization_id = organizationId
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('profiles') as any)
+    const { error: updateError } = await (supabase.from('profiles') as any)
       .update(updateData)
       .eq('id', userId)
+
+    if (updateError) {
+      console.error('Profile update error:', updateError)
+      // Don't fail - the user is created, profile might work later
+    }
 
     return NextResponse.json({
       success: true,
