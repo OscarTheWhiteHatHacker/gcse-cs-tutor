@@ -24,7 +24,6 @@ export default function SignupPage() {
   const [schoolSlug, setSchoolSlug] = useState('')
 
   // Step 3: Personal details
-  const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -196,16 +195,19 @@ export default function SignupPage() {
         setSuccessMessage('Account created successfully! You can now sign in.')
         setSuccess(true)
       } else {
-        // Teacher signup with real email
+        // Teacher signup with placeholder email (no confirmation needed)
+        const placeholderEmail = `${username.trim()}@teacher.gcse.local`
+
         const { error: signUpError } = await supabase.auth.signUp({
-          email,
+          email: placeholderEmail,
           password,
           options: {
             data: {
               full_name: fullName.trim(),
               role: 'teacher',
+              username: username.trim(),
             },
-            emailRedirectTo: `${location.origin}/auth/callback`,
+            emailRedirectTo: undefined,
           },
         })
 
@@ -224,20 +226,31 @@ export default function SignupPage() {
           const { error: profileError } = await (supabase.from('profiles') as any)
             .insert({
               id: newUser.id,
-              email,
+              email: placeholderEmail,
               role: 'teacher',
               full_name: fullName.trim(),
+              username: username.trim(),
               organization_id: orgId,
             })
 
           if (profileError) {
             console.error('Failed to create profile:', profileError)
           }
+
+          // Try to sign in immediately
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: placeholderEmail,
+            password,
+          })
+
+          if (!signInError) {
+            router.push('/teacher')
+            router.refresh()
+            return
+          }
         }
 
-        setSuccessMessage(
-          `We've sent a confirmation link to ${email}. Please check your email and click the link to activate your account.`
-        )
+        setSuccessMessage('Account created successfully! You can now sign in.')
         setSuccess(true)
       }
     } catch (err) {
@@ -499,17 +512,20 @@ export default function SignupPage() {
               {isTeacher && (
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                    Email address
+                    Username
                   </label>
                   <input
                     id="email"
-                    type="email"
+                    type="text"
                     required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm text-gray-900"
-                    placeholder="you@school.com"
+                    placeholder="e.g. mrroberts"
                   />
+                  <p className="mt-1 text-xs text-gray-500">
+                    This will be your username to sign in
+                  </p>
                 </div>
               )}
 
