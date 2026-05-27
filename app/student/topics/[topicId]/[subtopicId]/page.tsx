@@ -2,6 +2,19 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 
+interface LessonContent {
+  learning_objectives: string[]
+  explanation: string
+  key_points: string[]
+  examples: string[]
+  common_misconceptions: string[]
+}
+
+interface Lesson {
+  title: string
+  content: LessonContent
+}
+
 interface SubtopicData {
   id: string
   topic_id: string
@@ -84,10 +97,30 @@ async function checkReleased(subtopicId: string) {
   return data && (data as unknown[]).length > 0
 }
 
+function renderExplanation(text: string) {
+  return text.split('\n').map((line: string, i: number) => {
+    if (line.startsWith('## ')) {
+      return <h3 key={i} className="text-base font-semibold text-gray-900 mt-4 mb-2">{line.replace('## ', '')}</h3>
+    }
+    if (line.startsWith('### ')) {
+      return <h4 key={i} className="text-sm font-semibold text-gray-800 mt-3 mb-1">{line.replace('### ', '')}</h4>
+    }
+    if (line.startsWith('**') && line.endsWith('**')) {
+      return <p key={i} className="font-semibold text-gray-800 mt-2">{line.replace(/\*\*/g, '')}</p>
+    }
+    if (line.trim() === '') {
+      return <br key={i} />
+    }
+    return <p key={i} className="mb-2">{line}</p>
+  })
+}
+
 export default async function StudentSubtopicPage({
   params,
+  searchParams,
 }: {
   params: { topicId: string; subtopicId: string }
+  searchParams: { lesson?: string }
 }) {
   const [subtopic, topic, released] = await Promise.all([
     getSubtopic(params.subtopicId),
@@ -104,13 +137,28 @@ export default async function StudentSubtopicPage({
     redirect(`/student/topics/${params.topicId}`)
   }
 
-  const content = subtopic.content_json as {
-    learning_objectives: string[]
-    explanation: string
-    key_points: string[]
-    examples: string[]
-    common_misconceptions: string[]
-  } | null
+  const rawJson = subtopic.content_json as Record<string, unknown> | null
+
+  // Detect format: new (lessons array) vs old (flat content)
+  const lessons: Lesson[] = (rawJson?.lessons as Lesson[]) || []
+  const hasLessons = lessons.length > 0
+
+  // Also check for old flat format
+  const hasFlatContent = !hasLessons && rawJson && Array.isArray(rawJson.learning_objectives)
+
+  // Get current lesson index
+  const currentLessonIndex = hasLessons
+    ? Math.min(Math.max(parseInt(searchParams.lesson || '0', 10) || 0, 0), lessons.length - 1)
+    : 0
+
+  const content = hasLessons
+    ? lessons[currentLessonIndex].content
+    : hasFlatContent
+    ? (rawJson as unknown as LessonContent)
+    : null
+
+  const lessonSelectorUrl = (index: number) =>
+    `/student/topics/${topic.id}/${subtopic.id}?lesson=${index}`
 
   return (
     <div className="space-y-6">
@@ -128,6 +176,31 @@ export default async function StudentSubtopicPage({
           </p>
         </div>
       </div>
+
+      {/* Lesson tabs */}
+      {hasLessons && (
+        <div className="flex gap-1 border-b border-gray-200 pb-px">
+          {lessons.map((lesson, i) => (
+            <Link
+              key={i}
+              href={lessonSelectorUrl(i)}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg border border-b-0 transition-colors ${
+                i === currentLessonIndex
+                  ? 'bg-white border-gray-200 text-indigo-700 -mb-px'
+                  : 'bg-gray-50 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              {lesson.title}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {hasLessons && (
+        <p className="text-sm text-gray-500">
+          Lesson {currentLessonIndex + 1} of {lessons.length}: <strong>{lessons[currentLessonIndex].title}</strong>
+        </p>
+      )}
 
       {content && content.learning_objectives ? (
         <div className="space-y-8">
@@ -151,21 +224,7 @@ export default async function StudentSubtopicPage({
             <h2 className="text-lg font-semibold text-gray-900">Explanation</h2>
             <div className="mt-4 prose prose-sm max-w-none text-gray-700">
               {content.explanation ? (
-                content.explanation.split('\n').map((line: string, i: number) => {
-                  if (line.startsWith('## ')) {
-                    return <h3 key={i} className="text-base font-semibold text-gray-900 mt-4 mb-2">{line.replace('## ', '')}</h3>
-                  }
-                  if (line.startsWith('### ')) {
-                    return <h4 key={i} className="text-sm font-semibold text-gray-800 mt-3 mb-1">{line.replace('### ', '')}</h4>
-                  }
-                  if (line.startsWith('**') && line.endsWith('**')) {
-                    return <p key={i} className="font-semibold text-gray-800 mt-2">{line.replace(/\*\*/g, '')}</p>
-                  }
-                  if (line.trim() === '') {
-                    return <br key={i} />
-                  }
-                  return <p key={i} className="mb-2">{line}</p>
-                })
+                renderExplanation(content.explanation)
               ) : (
                 <p className="text-gray-500 italic">No explanation available.</p>
               )}

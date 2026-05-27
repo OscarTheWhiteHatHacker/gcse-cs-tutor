@@ -67,8 +67,18 @@ export default async function TeacherTopicDetailPage({
                 {subtopic.title}
               </h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                {subtopic.content_json && typeof subtopic.content_json === 'object' && 'learning_objectives' in (subtopic.content_json as object)
-                  ? `Lesson content available`
+                {subtopic.content_json && typeof subtopic.content_json === 'object'
+                  ? (() => {
+                      const cj = subtopic.content_json as Record<string, unknown>
+                      const lessons = cj.lessons
+                      if (Array.isArray(lessons) && lessons.length > 0) {
+                        return `${lessons.length} lesson${lessons.length !== 1 ? 's' : ''}`
+                      }
+                      if (Array.isArray(cj.learning_objectives)) {
+                        return `Lesson content available`
+                      }
+                      return 'No lesson content yet'
+                    })()
                   : 'No lesson content yet'}
               </p>
             </div>
