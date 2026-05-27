@@ -4,16 +4,27 @@ import { notFound } from 'next/navigation'
 import ReleaseToggle from '@/components/release-toggle'
 import AssignQuestionsButton from '@/components/assign-questions-button'
 
+interface LessonContent {
+  learning_objectives: string[]
+  explanation: string
+  key_points: string[]
+  examples: string[]
+  common_misconceptions: string[]
+}
+
+interface Lesson {
+  title: string
+  content: LessonContent
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getSubtopic(subtopicId: string): Promise<any> {
   const supabase = await createClient()
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (supabase.from('subtopics') as any)
     .select('*')
     .eq('id', subtopicId)
     .limit(1)
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (data as any[] | null)?.[0] || null
 }
@@ -21,13 +32,11 @@ async function getSubtopic(subtopicId: string): Promise<any> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getTopic(topicId: string): Promise<any> {
   const supabase = await createClient()
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (supabase.from('topics') as any)
     .select('*')
     .eq('id', topicId)
     .limit(1)
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (data as any[] | null)?.[0] || null
 }
@@ -36,21 +45,36 @@ async function isReleased(subtopicId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return false
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (supabase.from('released_subtopics') as any)
     .select('id')
     .eq('subtopic_id', subtopicId)
     .eq('teacher_id', user.id)
     .limit(1)
-
   return data && (data as unknown[]).length > 0
+}
+
+function renderExplanation(text: string) {
+  return text.split('\n').map((line: string, i: number) => {
+    if (line.startsWith('## ')) {
+      return <h3 key={i} className="text-base font-semibold text-gray-900 mt-4 mb-2">{line.replace('## ', '')}</h3>
+    }
+    if (line.startsWith('**') && line.endsWith('**')) {
+      return <p key={i} className="font-semibold text-gray-800 mt-2">{line.replace(/\*\*/g, '')}</p>
+    }
+    if (line.trim() === '') {
+      return <br key={i} />
+    }
+    return <p key={i} className="mb-2">{line}</p>
+  })
 }
 
 export default async function TeacherSubtopicPage({
   params,
+  searchParams,
 }: {
   params: { topicId: string; subtopicId: string }
+  searchParams: { lesson?: string }
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [subtopic, topic, released]: [any, any, boolean] = await Promise.all([
@@ -63,13 +87,23 @@ export default async function TeacherSubtopicPage({
     notFound()
   }
 
-  const content = subtopic.content_json as {
-    learning_objectives: string[]
-    explanation: string
-    key_points: string[]
-    examples: string[]
-    common_misconceptions: string[]
-  } | null
+  const rawJson = subtopic.content_json as Record<string, unknown> | null
+
+  // Detect format: new (lessons array) vs old (flat content)
+  const lessons: Lesson[] = (rawJson?.lessons as Lesson[]) || []
+  const hasLessons = lessons.length > 0
+
+  // Get current lesson index
+  const currentLessonIndex = hasLessons
+    ? Math.min(Math.max(parseInt(searchParams.lesson || '0', 10) || 0, 0), lessons.length - 1)
+    : 0
+
+  const content = hasLessons
+    ? lessons[currentLessonIndex].content
+    : (rawJson as unknown as LessonContent | null)
+
+  const lessonSelectorUrl = (index: number) =>
+    `/teacher/topics/${topic.id}/${subtopic.id}?lesson=${index}`
 
   return (
     <div className="space-y-6">
@@ -80,19 +114,44 @@ export default async function TeacherSubtopicPage({
         >
           &larr; Back to {topic.title}
         </Link>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{subtopic.title}</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                J277/{topic.component} &middot; {topic.title}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <AssignQuestionsButton subtopicId={subtopic.id} />
-              <ReleaseToggle subtopicId={subtopic.id} initiallyReleased={released} />
-            </div>
+        <div className="flex items-start justify-between gap-4 mt-2">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{subtopic.title}</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              J277/{topic.component} &middot; {topic.title}
+            </p>
           </div>
+          <div className="flex items-center gap-3">
+            <AssignQuestionsButton subtopicId={subtopic.id} lessonIndex={hasLessons ? currentLessonIndex : undefined} />
+            <ReleaseToggle subtopicId={subtopic.id} initiallyReleased={released} />
+          </div>
+        </div>
       </div>
+
+      {/* Lesson tabs */}
+      {hasLessons && (
+        <div className="flex gap-1 border-b border-gray-200 pb-px">
+          {lessons.map((lesson, i) => (
+            <Link
+              key={i}
+              href={lessonSelectorUrl(i)}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg border border-b-0 transition-colors ${
+                i === currentLessonIndex
+                  ? 'bg-white border-gray-200 text-indigo-700 -mb-px'
+                  : 'bg-gray-50 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              {lesson.title}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {hasLessons && (
+        <p className="text-sm text-gray-500">
+          Lesson {currentLessonIndex + 1} of {lessons.length}: <strong>{lessons[currentLessonIndex].title}</strong>
+        </p>
+      )}
 
       {content && content.learning_objectives ? (
         <div className="space-y-8">
@@ -116,21 +175,7 @@ export default async function TeacherSubtopicPage({
             <h2 className="text-lg font-semibold text-gray-900">Explanation</h2>
             <div className="mt-4 prose prose-sm max-w-none text-gray-700">
               {content.explanation ? (
-                content.explanation.split('\n').map((line: string, i: number) => {
-                  if (line.startsWith('## ')) {
-                    return <h3 key={i} className="text-base font-semibold text-gray-900 mt-4 mb-2">{line.replace('## ', '')}</h3>
-                  }
-                  if (line.startsWith('### ')) {
-                    return <h4 key={i} className="text-sm font-semibold text-gray-800 mt-3 mb-1">{line.replace('### ', '')}</h4>
-                  }
-                  if (line.startsWith('**') && line.endsWith('**')) {
-                    return <p key={i} className="font-semibold text-gray-800 mt-2">{line.replace(/\*\*/g, '')}</p>
-                  }
-                  if (line.trim() === '') {
-                    return <br key={i} />
-                  }
-                  return <p key={i} className="mb-2">{line}</p>
-                })
+                renderExplanation(content.explanation)
               ) : (
                 <p className="text-gray-500 italic">No explanation available.</p>
               )}
@@ -185,7 +230,7 @@ export default async function TeacherSubtopicPage({
           </svg>
           <h2 className="mt-4 text-lg font-semibold text-gray-700">No lesson content yet</h2>
           <p className="mt-2 text-sm text-gray-500">
-            Lesson content has not been generated for this subtopic yet. Use the seed endpoint to populate content.
+            Lesson content has not been generated for this subtopic yet.
           </p>
         </div>
       )}

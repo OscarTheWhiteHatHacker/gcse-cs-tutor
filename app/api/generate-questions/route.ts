@@ -111,7 +111,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Only teachers can generate question sets' }, { status: 403 })
   }
 
-  const { subtopicId } = await request.json()
+  const body = await request.json()
+  const { subtopicId, lessonIndex } = body
+
   if (!subtopicId) {
     return NextResponse.json({ error: 'Missing subtopicId' }, { status: 400 })
   }
@@ -132,26 +134,46 @@ export async function POST(request: Request) {
   const subtopicTitle = subtopic.title
 
   // Build lesson content summary for the AI prompt
-  const content = subtopic.content_json as Record<string, unknown> | null
-  let lessonContent = subtopicTitle
-  if (content && typeof content === 'object') {
+  const rawJson = subtopic.content_json as Record<string, unknown> | null
+  const lessons = (rawJson?.lessons as Array<{ title: string; content: Record<string, unknown> }> | undefined) || []
+  const hasLessons = lessons.length > 0
+
+  // Determine which lesson content to use
+  let lessonTitle = subtopicTitle
+  let content: Record<string, unknown> | null = null
+
+  if (hasLessons && typeof lessonIndex === 'number') {
+    const idx = Math.min(Math.max(lessonIndex, 0), lessons.length - 1)
+    const lesson = lessons[idx]
+    lessonTitle = `${subtopicTitle} - ${lesson.title}`
+    content = lesson.content as Record<string, unknown>
+  } else if (rawJson && !hasLessons) {
+    content = rawJson
+  } else if (hasLessons) {
+    // No lessonIndex provided, use first lesson
+    content = lessons[0].content as Record<string, unknown>
+  }
+
+  let lessonContent = lessonTitle
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const c = content as any
+  if (c && typeof c === 'object') {
     const parts: string[] = []
-    if (Array.isArray(content.learning_objectives)) {
-      parts.push('LEARNING OBJECTIVES:\n' + (content.learning_objectives as string[]).map((o: string) => '- ' + o).join('\n'))
+    if (Array.isArray(c.learning_objectives)) {
+      parts.push('LEARNING OBJECTIVES:\n' + (c.learning_objectives as string[]).map((o: string) => '- ' + o).join('\n'))
     }
-    if (typeof content.explanation === 'string') {
-      // Truncate explanation to avoid exceeding token limits
-      const expl = (content.explanation as string).substring(0, 3000)
+    if (typeof c.explanation === 'string') {
+      const expl = (c.explanation as string).substring(0, 3000)
       parts.push('EXPLANATION:\n' + expl)
     }
-    if (Array.isArray(content.key_points)) {
-      parts.push('KEY POINTS:\n' + (content.key_points as string[]).map((k: string) => '- ' + k).join('\n'))
+    if (Array.isArray(c.key_points)) {
+      parts.push('KEY POINTS:\n' + (c.key_points as string[]).map((k: string) => '- ' + k).join('\n'))
     }
-    if (Array.isArray(content.examples)) {
-      parts.push('EXAMPLES:\n' + (content.examples as string[]).map((e: string) => '- ' + e).join('\n'))
+    if (Array.isArray(c.examples)) {
+      parts.push('EXAMPLES:\n' + (c.examples as string[]).map((e: string) => '- ' + e).join('\n'))
     }
-    if (Array.isArray(content.common_misconceptions)) {
-      parts.push('COMMON MISCONCEPTIONS:\n' + (content.common_misconceptions as string[]).map((m: string) => '- ' + m).join('\n'))
+    if (Array.isArray(c.common_misconceptions)) {
+      parts.push('COMMON MISCONCEPTIONS:\n' + (c.common_misconceptions as string[]).map((m: string) => '- ' + m).join('\n'))
     }
     lessonContent = parts.join('\n\n')
   }

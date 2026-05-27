@@ -10,9 +10,10 @@ interface Question {
 
 interface AssignQuestionsButtonProps {
   subtopicId: string
+  lessonIndex?: number
 }
 
-export default function AssignQuestionsButton({ subtopicId }: AssignQuestionsButtonProps) {
+export default function AssignQuestionsButton({ subtopicId, lessonIndex }: AssignQuestionsButtonProps) {
   const [loading, setLoading] = useState(false)
   const [questions, setQuestions] = useState<Question[]>([])
   const [error, setError] = useState('')
@@ -26,7 +27,7 @@ export default function AssignQuestionsButton({ subtopicId }: AssignQuestionsBut
       const response = await fetch('/api/generate-questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subtopicId }),
+        body: JSON.stringify({ subtopicId, lessonIndex }),
       })
 
       const data = await response.json()
