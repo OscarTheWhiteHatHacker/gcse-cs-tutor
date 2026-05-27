@@ -61,17 +61,19 @@ const LESSON_TEMPLATES: Record<string, string[]> = {
 }
 
 async function generateLesson(subtopicTitle: string, lessonTitle: string): Promise<Record<string, unknown>> {
-  const prompt = `You are an expert OCR GCSE Computer Science teacher. Generate a comprehensive lesson for GCSE students (ages 14-16).
+  const prompt = `You are an expert OCR GCSE Computer Science teacher. Generate a detailed, comprehensive lesson for GCSE students (ages 14-16).
 
 Subtopic: ${subtopicTitle}
 Lesson: ${lessonTitle}
 
+The content must be THOROUGH and EXPANSIVE — equivalent to a 20-minute classroom lesson with enough material for generating many exam questions.
+
 Return JSON with these exact fields:
-1. "learning_objectives": Array of 4-5 specific objectives starting with verbs like Define, Explain, Describe, Compare
-2. "explanation": Detailed markdown explanation (300-400 words), using ## headings, **bold** for key terms, bullet points
-3. "key_points": Array of 6-8 concise bullet-point facts students must remember
-4. "examples": Array of 3 exam-style examples with scenarios
-5. "common_misconceptions": Array of 3 specific misconceptions with corrections
+1. "learning_objectives": Array of 5-6 specific, detailed objectives starting with verbs like Define, Explain, Describe, Compare, Evaluate, Analyse
+2. "explanation": VERY DETAILED markdown explanation (600-800 words). Use ## headings, **bold** for key terms, bullet points. Cover: what it is, how it works, real-world applications, exam tips, worked examples within the text
+3. "key_points": Array of 10-12 concise, exam-ready bullet-point facts
+4. "examples": Array of 5 detailed exam-style examples with scenarios AND explanations
+5. "common_misconceptions": Array of 4-5 specific misconceptions with detailed corrections
 
 Return ONLY valid JSON. No markdown wrapping.`
 
@@ -85,7 +87,7 @@ Return ONLY valid JSON. No markdown wrapping.`
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.5,
-      max_tokens: 2500,
+      max_tokens: 3500,
     }),
   })
 
