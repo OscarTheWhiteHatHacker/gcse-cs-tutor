@@ -93,6 +93,9 @@ export default async function TeacherSubtopicPage({
   const lessons: Lesson[] = (rawJson?.lessons as Lesson[]) || []
   const hasLessons = lessons.length > 0
 
+  // Also check for old flat format (learning_objectives directly on content_json)
+  const hasFlatContent = !hasLessons && rawJson && Array.isArray(rawJson.learning_objectives)
+
   // Get current lesson index
   const currentLessonIndex = hasLessons
     ? Math.min(Math.max(parseInt(searchParams.lesson || '0', 10) || 0, 0), lessons.length - 1)
@@ -100,7 +103,9 @@ export default async function TeacherSubtopicPage({
 
   const content = hasLessons
     ? lessons[currentLessonIndex].content
-    : (rawJson as unknown as LessonContent | null)
+    : hasFlatContent
+    ? (rawJson as unknown as LessonContent)
+    : null
 
   const lessonSelectorUrl = (index: number) =>
     `/teacher/topics/${topic.id}/${subtopic.id}?lesson=${index}`
