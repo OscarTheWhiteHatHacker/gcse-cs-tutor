@@ -21,14 +21,14 @@ ${existingQuestions}
 Each new question should: test understanding of the material above, be different from the previous questions, have marks (1-5), and include a detailed mark scheme. Return ONLY a JSON array where each item has: {question: string, marks: number, mark_scheme: string}. Only return the JSON array, no other text.`
   }
 
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const response = await fetch('https://models.inference.ai.azure.com/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      Authorization: `Bearer ${process.env.GITHUB_MODELS_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
       max_tokens: 2500,
@@ -37,7 +37,7 @@ Each new question should: test understanding of the material above, be different
 
   if (!response.ok) {
     const errorBody = await response.text()
-    let errorMessage = `Groq returned ${response.status}`
+    let errorMessage = `GitHub Models returned ${response.status}`
     try {
       const errorJson = JSON.parse(errorBody)
       if (errorJson.error?.message) {
