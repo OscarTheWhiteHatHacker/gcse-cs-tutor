@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
 // 11 subtopics × 3-4 lessons = ~35 AI calls
-const LESSONS_PER_SUBTOPIC = 3
-
 const LESSON_TEMPLATES: Record<string, string[]> = {
   'Systems architecture': [
     'CPU Architecture and Components',
