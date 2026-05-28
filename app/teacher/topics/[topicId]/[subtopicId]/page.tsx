@@ -54,18 +54,47 @@ async function isReleased(subtopicId: string) {
   return data && (data as unknown[]).length > 0
 }
 
+function renderInline(text: string) {
+  const parts: React.ReactNode[] = []
+  let remaining = text
+  let idx = 0
+
+  // Match **bold** or `code` — whichever comes first
+  const regex = /(\*\*(.+?)\*\*|`(.+?)`)/g
+  let match: RegExpExecArray | null
+  let lastIndex = 0
+
+  while ((match = regex.exec(remaining)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(remaining.slice(lastIndex, match.index))
+    }
+    if (match[2] !== undefined) {
+      // Bold
+      parts.push(<strong key={idx++}>{match[2]}</strong>)
+    } else if (match[3] !== undefined) {
+      // Code
+      parts.push(<code key={idx++} className="bg-gray-100 text-red-600 px-1 rounded text-xs font-mono">{match[3]}</code>)
+    }
+    lastIndex = match.index + match[0].length
+  }
+  if (lastIndex < remaining.length) {
+    parts.push(remaining.slice(lastIndex))
+  }
+  return parts.length > 0 ? parts : text
+}
+
 function renderExplanation(text: string) {
   return text.split('\n').map((line: string, i: number) => {
     if (line.startsWith('## ')) {
       return <h3 key={i} className="text-base font-semibold text-gray-900 mt-4 mb-2">{line.replace('## ', '')}</h3>
     }
-    if (line.startsWith('**') && line.endsWith('**')) {
-      return <p key={i} className="font-semibold text-gray-800 mt-2">{line.replace(/\*\*/g, '')}</p>
+    if (line.startsWith('### ')) {
+      return <h4 key={i} className="text-sm font-semibold text-gray-800 mt-3 mb-1">{line.replace('### ', '')}</h4>
     }
     if (line.trim() === '') {
       return <br key={i} />
     }
-    return <p key={i} className="mb-2">{line}</p>
+    return <p key={i} className="mb-2">{renderInline(line)}</p>
   })
 }
 
