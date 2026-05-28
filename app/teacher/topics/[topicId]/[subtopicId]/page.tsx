@@ -56,7 +56,7 @@ async function isReleased(subtopicId: string) {
 
 function renderInline(text: string) {
   const parts: React.ReactNode[] = []
-  let remaining = text
+  const remaining = text
   let idx = 0
 
   // Match **bold** or `code` — whichever comes first
