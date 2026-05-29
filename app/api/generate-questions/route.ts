@@ -10,9 +10,8 @@ ${lessonContent}
 CRITICAL RULES:
 - Each question must be a PURE COMPREHENSION question — test only understanding of facts AND concepts EXPLICITLY stated in the lesson content above. The student must be able to answer from the lesson alone.
 - Do NOT ask students to write code, pseudocode, draw diagrams, create flowcharts, or do anything they would need external knowledge or tools for.
-- Every answer must be text that can be typed into a text box. No diagrams, drawings, or anything non-text.
-- Questions should use "Define", "Explain", "Describe", "State", "Identify", "List", "Compare", "Give an example of", "What is meant by", "Why is...".
-- DO NOT use "Write", "Create", "Draw", "Construct", "Design", "Implement", "Show how to".
+- Do NOT ask students to write code, pseudocode, programs, algorithms, or draw/create flowcharts or diagrams — they can only type text into a box.
+- Questions should use "Define", "Explain", "Describe", "State", "Identify", "List", "Compare", "Give an example of", "What is meant by", "Why is...", "Write down".
 - If the lesson explains what pseudocode IS, do not ask students to write pseudocode — ask them to describe its purpose or identify key features.
 - Each question should have marks (1-5) and include a mark scheme based ONLY on the lesson content.
 - Return ONLY a JSON array where each item has: {question: string, marks: number, mark_scheme: string}. Only return the JSON array, no other text.`
@@ -29,9 +28,8 @@ ${existingQuestions}
 CRITICAL RULES:
 - Each question must be a PURE COMPREHENSION question — test only understanding of facts AND concepts EXPLICITLY stated in the lesson content above. The student must be able to answer from the lesson alone.
 - Do NOT ask students to write code, pseudocode, draw diagrams, create flowcharts, or do anything they would need external knowledge or tools for.
-- Every answer must be text that can be typed into a text box. No diagrams, drawings, or anything non-text.
-- Questions should use "Define", "Explain", "Describe", "State", "Identify", "List", "Compare", "Give an example of", "What is meant by", "Why is...".
-- DO NOT use "Write", "Create", "Draw", "Construct", "Design", "Implement", "Show how to".
+- Do NOT ask students to write code, pseudocode, programs, algorithms, or draw/create flowcharts or diagrams — they can only type text into a box.
+- Questions should use "Define", "Explain", "Describe", "State", "Identify", "List", "Compare", "Give an example of", "What is meant by", "Why is...", "Write down".
 - If the lesson explains what pseudocode IS, do not ask students to write pseudocode — ask them to describe its purpose or identify key features.
 - Each question should have marks (1-5) and include a mark scheme based ONLY on the lesson content.
 - Return ONLY a JSON array where each item has: {question: string, marks: number, mark_scheme: string}. Only return the JSON array, no other text.`
