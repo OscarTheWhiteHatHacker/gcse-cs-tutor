@@ -2,15 +2,23 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 async function generateViaAI(subtopicTitle: string, lessonContent: string, existingQuestions: string = ''): Promise<string> {
-  let prompt = `You are an expert OCR GCSE Computer Science examiner. Generate 5 exam-style questions specifically based on the following lesson content for "${subtopicTitle}".
+  let prompt = `You are an expert OCR GCSE Computer Science examiner. Generate 5 exam-style questions based ONLY on the following lesson content for "${subtopicTitle}".
 
 LESSON CONTENT:
 ${lessonContent}
 
-Each question should: test understanding of the material above, have marks (1-5), and include a detailed mark scheme based on the lesson content. Return ONLY a JSON array where each item has: {question: string, marks: number, mark_scheme: string}. Only return the JSON array, no other text.`
+CRITICAL RULES:
+- Each question must be a PURE COMPREHENSION question — test only understanding of facts AND concepts EXPLICITLY stated in the lesson content above. The student must be able to answer from the lesson alone.
+- Do NOT ask students to write code, pseudocode, draw diagrams, create flowcharts, or do anything they would need external knowledge or tools for.
+- Every answer must be text that can be typed into a text box. No diagrams, drawings, or anything non-text.
+- Questions should use "Define", "Explain", "Describe", "State", "Identify", "List", "Compare", "Give an example of", "What is meant by", "Why is...".
+- DO NOT use "Write", "Create", "Draw", "Construct", "Design", "Implement", "Show how to".
+- If the lesson explains what pseudocode IS, do not ask students to write pseudocode — ask them to describe its purpose or identify key features.
+- Each question should have marks (1-5) and include a mark scheme based ONLY on the lesson content.
+- Return ONLY a JSON array where each item has: {question: string, marks: number, mark_scheme: string}. Only return the JSON array, no other text.`
 
   if (existingQuestions) {
-    prompt = `You are an expert OCR GCSE Computer Science examiner. Generate 5 NEW exam-style questions based on the following lesson content for "${subtopicTitle}". The questions MUST be different from any previously generated for this topic.
+    prompt = `You are an expert OCR GCSE Computer Science examiner. Generate 5 NEW exam-style questions based ONLY on the following lesson content for "${subtopicTitle}". The questions MUST be different from any previously generated for this topic.
 
 LESSON CONTENT:
 ${lessonContent}
@@ -18,7 +26,15 @@ ${lessonContent}
 PREVIOUS QUESTIONS (DO NOT REPEAT THESE):
 ${existingQuestions}
 
-Each new question should: test understanding of the material above, be different from the previous questions, have marks (1-5), and include a detailed mark scheme. Return ONLY a JSON array where each item has: {question: string, marks: number, mark_scheme: string}. Only return the JSON array, no other text.`
+CRITICAL RULES:
+- Each question must be a PURE COMPREHENSION question — test only understanding of facts AND concepts EXPLICITLY stated in the lesson content above. The student must be able to answer from the lesson alone.
+- Do NOT ask students to write code, pseudocode, draw diagrams, create flowcharts, or do anything they would need external knowledge or tools for.
+- Every answer must be text that can be typed into a text box. No diagrams, drawings, or anything non-text.
+- Questions should use "Define", "Explain", "Describe", "State", "Identify", "List", "Compare", "Give an example of", "What is meant by", "Why is...".
+- DO NOT use "Write", "Create", "Draw", "Construct", "Design", "Implement", "Show how to".
+- If the lesson explains what pseudocode IS, do not ask students to write pseudocode — ask them to describe its purpose or identify key features.
+- Each question should have marks (1-5) and include a mark scheme based ONLY on the lesson content.
+- Return ONLY a JSON array where each item has: {question: string, marks: number, mark_scheme: string}. Only return the JSON array, no other text.`
   }
 
   const response = await fetch('https://models.inference.ai.azure.com/chat/completions', {
