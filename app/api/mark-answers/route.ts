@@ -36,14 +36,14 @@ CRITICAL RULES:
 
 Return JSON ONLY: {"score": number, "feedback": string, "suggestions": string}`
 
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const response = await fetch('https://models.inference.ai.azure.com/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      Authorization: `Bearer ${process.env.GITHUB_MODELS_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.2,
       max_tokens: 500,
@@ -58,7 +58,7 @@ Return JSON ONLY: {"score": number, "feedback": string, "suggestions": string}`
       return markSingleAnswer(question, markScheme, studentAnswer, marks, attempt + 1)
     }
     const errorBody = await response.text()
-    let errorMessage = `OpenRouter returned ${response.status}`
+    let errorMessage = `GitHub Models returned ${response.status}`
     try {
       const errorJson = JSON.parse(errorBody)
       if (errorJson.error?.message) {
