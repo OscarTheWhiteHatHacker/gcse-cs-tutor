@@ -27,7 +27,7 @@ function getScoreColor(score: number, maxScore: number): string {
 }
 
 async function getStudentData(): Promise<{
-  profile: { full_name: string } | null
+  profile: { full_name: string; teacher_feedback: string | null; feedback_updated_at: string | null } | null
   completedSets: QuestionSetInfo[]
   totalQuestionsCompleted: number
   averageScore: number
@@ -47,7 +47,7 @@ async function getStudentData(): Promise<{
   const [{ data: profileList }, { data: allAnswers }] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase.from('profiles') as any)
-      .select('full_name, organization_id')
+      .select('full_name, organization_id, teacher_feedback, feedback_updated_at')
       .eq('id', user.id)
       .limit(1),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -190,6 +190,31 @@ export default async function StudentDashboard() {
           Welcome back, {profile?.full_name || 'Student'}
         </p>
       </div>
+
+      {/* Teacher Feedback */}
+      {profile?.teacher_feedback && (
+        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100">
+              <svg className="h-4 w-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-indigo-900">Feedback from your teacher</h3>
+              <p className="mt-1 text-sm text-indigo-800 whitespace-pre-wrap">{profile.teacher_feedback}</p>
+              {profile.feedback_updated_at && (
+                <p className="mt-1 text-xs text-indigo-500">
+                  Last updated: {new Date(profile.feedback_updated_at).toLocaleDateString('en-GB', {
+                    day: 'numeric', month: 'short', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit',
+                  })}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

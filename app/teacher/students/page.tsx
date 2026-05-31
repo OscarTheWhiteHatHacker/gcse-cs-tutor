@@ -8,6 +8,8 @@ interface Student {
   id: string
   full_name: string
   username: string | null
+  teacher_feedback?: string | null
+  feedback_updated_at?: string | null
 }
 
 export default function ManageStudentsPage() {
@@ -29,6 +31,10 @@ export default function ManageStudentsPage() {
   // Edit form state
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
+
+  // Feedback state
+  const [feedbackText, setFeedbackText] = useState<Record<string, string>>({})
+  const [savingFeedback, setSavingFeedback] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     loadStudents()
@@ -62,13 +68,58 @@ export default function ManageStudentsPage() {
     // Fetch students in same org
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: studentData } = await (supabase.from('profiles') as any)
-      .select('id, full_name, username')
+      .select('id, full_name, username, teacher_feedback, feedback_updated_at')
       .eq('role', 'student')
       .eq('organization_id', teacherProfile.organization_id)
       .order('full_name', { ascending: true })
 
-    setStudents((studentData || []) as Student[])
+    const studentsList = (studentData || []) as Student[]
+    setStudents(studentsList)
+
+    // Initialise feedback text
+    const feedbackMap: Record<string, string> = {}
+    for (const s of studentsList) {
+      feedbackMap[s.id] = s.teacher_feedback || ''
+    }
+    setFeedbackText(feedbackMap)
+
     setLoading(false)
+  }
+
+  async function saveFeedback(studentId: string) {
+    setSavingFeedback((prev) => ({ ...prev, [studentId]: true }))
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const res = await fetch('/api/teacher-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret: 'wipe-my-data-2026',
+          studentId,
+          feedback: feedbackText[studentId] || '',
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Failed to save feedback')
+      } else {
+        setSuccess('Feedback saved!')
+        // Update local state
+        setStudents((prev) =>
+          prev.map((s) =>
+            s.id === studentId
+              ? { ...s, teacher_feedback: feedbackText[studentId] || '', feedback_updated_at: new Date().toISOString() }
+              : s
+          )
+        )
+      }
+    } catch {
+      setError('Failed to save feedback')
+    }
+    setSavingFeedback((prev) => ({ ...prev, [studentId]: false }))
   }
 
   async function handleAddStudent(e: React.FormEvent) {
@@ -193,7 +244,7 @@ export default function ManageStudentsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Manage Students</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Create, edit, and remove student accounts in your school.
+            Create, edit, and remove student accounts. Add feedback that students can see on their dashboard.
           </p>
         </div>
         <button
@@ -274,64 +325,99 @@ export default function ManageStudentsPage() {
             </p>
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Username</th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {students.map((student) => (
-                <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {editingId === student.id ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
-                        />
-                        <button
-                          onClick={() => handleEditStudent(student.id)}
-                          disabled={submitting}
-                          className="text-sm font-medium text-green-600 hover:text-green-800"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEditingId(null)}
-                          className="text-sm font-medium text-gray-500 hover:text-gray-700"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-sm font-medium text-gray-900">{student.full_name}</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.username || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+          <div className="divide-y divide-gray-200">
+            {students.map((student) => (
+              <div key={student.id} className="px-6 py-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600">
+                      {student.full_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      {editingId === student.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
+                          />
+                          <button
+                            onClick={() => handleEditStudent(student.id)}
+                            disabled={submitting}
+                            className="text-sm font-medium text-green-600 hover:text-green-800"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="text-sm font-medium text-gray-500 hover:text-gray-700"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-sm font-medium text-gray-900">{student.full_name}</p>
+                          <p className="text-xs text-gray-500">@{student.username || '-'}</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
                     <button
                       onClick={() => { setEditingId(student.id); setEditName(student.full_name); setError(null); setSuccess(null) }}
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
+                      className="text-sm font-medium text-indigo-600 hover:text-indigo-900"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDeleteStudent(student.id, student.full_name)}
                       disabled={submitting}
-                      className="text-red-600 hover:text-red-900"
+                      className="text-sm font-medium text-red-600 hover:text-red-900"
                     >
                       Delete
                     </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+
+                {/* Teacher Feedback */}
+                <div className="mt-3 ml-13 pl-13">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Teacher Feedback (visible to student)
+                  </label>
+                  <div className="flex gap-2">
+                    <textarea
+                      value={feedbackText[student.id] || ''}
+                      onChange={(e) =>
+                        setFeedbackText((prev) => ({ ...prev, [student.id]: e.target.value }))
+                      }
+                      rows={2}
+                      className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      placeholder="Write feedback for this student..."
+                    />
+                    <button
+                      onClick={() => saveFeedback(student.id)}
+                      disabled={savingFeedback[student.id]}
+                      className="self-start rounded-md bg-indigo-600 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                    >
+                      {savingFeedback[student.id] ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                  {student.teacher_feedback && (
+                    <p className="mt-1 text-xs text-gray-400">
+                      Last saved: {student.feedback_updated_at
+                        ? new Date(student.feedback_updated_at).toLocaleDateString('en-GB', {
+                            day: 'numeric', month: 'short', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit',
+                          })
+                        : 'never'}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
